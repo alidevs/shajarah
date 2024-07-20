@@ -2,6 +2,7 @@
 
 mod app;
 mod tree;
+mod zoom;
 pub use app::App;
 use egui::{Modifiers, Pos2};
 
@@ -12,4 +13,27 @@ pub struct Input {
     // primary_pressed: bool,
     secondary_pressed: bool,
     modifiers: Modifiers,
+}
+
+fn setup_fonts(ctx: &egui::Context) {
+    let mut fonts = egui::FontDefinitions::default();
+
+    fonts.font_data.insert(
+        "arial".to_owned(),
+        egui::FontData::from_static(include_bytes!("../fonts/arial.ttf")),
+    );
+
+    fonts
+        .families
+        .entry(egui::FontFamily::Proportional)
+        .or_default()
+        .insert(0, "arial".to_owned());
+
+    fonts
+        .families
+        .entry(egui::FontFamily::Monospace)
+        .or_default()
+        .push("arial".to_owned());
+
+    ctx.set_fonts(fonts);
 }
