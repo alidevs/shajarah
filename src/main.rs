@@ -20,24 +20,34 @@ fn main() -> eframe::Result {
     eframe::run_native(
         "eframe template",
         native_options,
-        Box::new(|cc| Ok(Box::new(shajarah::TemplateApp::new(cc)))),
+        Box::new(|cc| Ok(Box::new(shajarah::App::new(cc)))),
     )
 }
 
 // When compiling to web using trunk:
 #[cfg(target_arch = "wasm32")]
 fn main() {
+    use eframe::wasm_bindgen::JsCast;
+
     // Redirect `log` message to `console.log` and friends:
     eframe::WebLogger::init(log::LevelFilter::Debug).ok();
 
     let web_options = eframe::WebOptions::default();
 
+    let document = eframe::web_sys::window().unwrap().document().unwrap();
+
+    let canvas = document.get_element_by_id("canvas").unwrap();
+    let canvas: eframe::web_sys::HtmlCanvasElement = canvas
+        .dyn_into::<eframe::web_sys::HtmlCanvasElement>()
+        .map_err(|_| ())
+        .unwrap();
+
     wasm_bindgen_futures::spawn_local(async {
         let start_result = eframe::WebRunner::new()
             .start(
-                "the_canvas_id",
+                eframe::web_sys::HtmlCanvasElement::from(canvas),
                 web_options,
-                Box::new(|cc| Ok(Box::new(shajarah::TemplateApp::new(cc)))),
+                Box::new(|cc| Ok(Box::new(shajarah::App::new(cc)))),
             )
             .await;
 

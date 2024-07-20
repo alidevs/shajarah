@@ -14,11 +14,16 @@
         pkgs = import nixpkgs { inherit system overlays; };
       in with pkgs; {
         devShells.default = mkShell rec {
-          buildInputs = [
+          packages = [
             # Rust
-            rust-bin.stable.latest.default
+            (rust-bin.stable.latest.default.override {
+              extensions = [ "rust-src" "rust-analyzer" ];
+              targets = ["wasm32-unknown-unknown"];
+            })
             trunk
+          ];
 
+          buildInputs = [
             # misc. libraries
             openssl
             pkg-config
