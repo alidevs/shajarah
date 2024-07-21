@@ -7,15 +7,6 @@ use egui::{
 };
 
 pub trait Zoom {
-    #[inline(always)]
-    fn zoomed(mut self, zoom: f32) -> Self
-    where
-        Self: Copy,
-    {
-        self.zoom(zoom);
-        self
-    }
-
     fn zoom(&mut self, zoom: f32);
 }
 

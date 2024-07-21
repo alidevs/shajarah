@@ -43,10 +43,6 @@ impl TreeUi {
         let input = ui.ctx().input(|i| Input {
             scroll_delta: i.raw_scroll_delta.y,
             hover_pos: i.pointer.hover_pos(),
-            interact_pos: i.pointer.interact_pos(),
-            modifiers: i.modifiers,
-            // primary_pressed: i.pointer.primary_pressed(),
-            secondary_pressed: i.pointer.secondary_pressed(),
         });
 
         ui.style_mut().zoom(self.scale);
@@ -96,18 +92,21 @@ impl TreeUi {
 }
 
 pub struct Node {
-    id: usize,
+    // id: usize,
     children: Vec<Node>,
 }
 
 impl Node {
-    pub fn new(id: usize, children: Vec<Node>) -> Self {
-        Self { id, children }
+    pub fn new(_id: usize, children: Vec<Node>) -> Self {
+        Self {
+            // id,
+            children,
+        }
     }
 
-    pub fn add_child(&mut self, child: Node) {
-        self.children.push(child);
-    }
+    // pub fn add_child(&mut self, child: Node) {
+    //     self.children.push(child);
+    // }
 
     pub fn draw(&self, ui: &mut egui::Ui, offset: Pos2, scale: f32) {
         let painter = ui.painter();
@@ -132,7 +131,7 @@ impl Node {
             Color32::WHITE,
         );
 
-        if self.children.len() == 0 {
+        if self.children.is_empty() {
             painter.circle_filled(offset, NODE_RADIUS * scale, Color32::RED);
             return;
         }
@@ -196,7 +195,7 @@ impl Node {
     }
 
     fn children_shift(&self) -> f32 {
-        if self.children.len() == 0 {
+        if self.children.is_empty() {
             return NODE_RADIUS * 2.;
         }
 

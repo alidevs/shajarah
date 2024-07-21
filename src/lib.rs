@@ -4,15 +4,11 @@ mod app;
 mod tree;
 mod zoom;
 pub use app::App;
-use egui::{Modifiers, Pos2};
+use egui::Pos2;
 
 pub struct Input {
     hover_pos: Option<Pos2>,
-    interact_pos: Option<Pos2>,
     scroll_delta: f32,
-    // primary_pressed: bool,
-    secondary_pressed: bool,
-    modifiers: Modifiers,
 }
 
 fn setup_fonts(ctx: &egui::Context) {
