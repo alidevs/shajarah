@@ -811,6 +811,7 @@ checksum = "75b325c5dbd37f80359721ad39aca5a29fb04c89279657cffdda8736d0c0b9d2"
 [[package]]
 name = "ecolor"
 version = "0.28.1"
+source = "git+https://github.com/bksalman/egui?branch=fix-ios-canvas-focus#c0bc79d2c81c50b67078fd6abd83f04d00fda973"
 dependencies = [
  "bytemuck",
  "emath",
@@ -820,6 +821,7 @@ dependencies = [
 [[package]]
 name = "eframe"
 version = "0.28.1"
+source = "git+https://github.com/bksalman/egui?branch=fix-ios-canvas-focus#c0bc79d2c81c50b67078fd6abd83f04d00fda973"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -855,6 +857,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.28.1"
+source = "git+https://github.com/bksalman/egui?branch=fix-ios-canvas-focus#c0bc79d2c81c50b67078fd6abd83f04d00fda973"
 dependencies = [
  "accesskit",
  "ahash",
@@ -869,6 +872,7 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.28.1"
+source = "git+https://github.com/bksalman/egui?branch=fix-ios-canvas-focus#c0bc79d2c81c50b67078fd6abd83f04d00fda973"
 dependencies = [
  "accesskit_winit",
  "ahash",
@@ -886,6 +890,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.28.1"
+source = "git+https://github.com/bksalman/egui?branch=fix-ios-canvas-focus#c0bc79d2c81c50b67078fd6abd83f04d00fda973"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -900,6 +905,7 @@ dependencies = [
 [[package]]
 name = "emath"
 version = "0.28.1"
+source = "git+https://github.com/bksalman/egui?branch=fix-ios-canvas-focus#c0bc79d2c81c50b67078fd6abd83f04d00fda973"
 dependencies = [
  "bytemuck",
  "serde",
@@ -953,6 +959,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.28.1"
+source = "git+https://github.com/bksalman/egui?branch=fix-ios-canvas-focus#c0bc79d2c81c50b67078fd6abd83f04d00fda973"
 dependencies = [
  "ab_glyph",
  "ahash",
