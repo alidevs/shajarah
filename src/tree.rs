@@ -176,7 +176,7 @@ impl Node {
             }
 
             let child_children_shift = child.children_shift();
-            child_x += child_children_shift + NODE_PADDING * scale;
+            child_x += (child_children_shift + NODE_PADDING) * scale;
         }
 
         let mut child_x = offset.x - ((self.children_shift() / 2.) * scale);
@@ -188,7 +188,7 @@ impl Node {
                 scale,
             );
             let child_children_shift = child.children_shift();
-            child_x += child_children_shift + (NODE_PADDING * scale);
+            child_x += (child_children_shift + NODE_PADDING) * scale;
         }
 
         let painter = ui.painter();

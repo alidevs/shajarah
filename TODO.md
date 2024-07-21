@@ -1,0 +1,5 @@
+- [ ] Add backend
+  - [ ] "add members" endpoint that receives the diff from the client and adds it to the database
+  - [ ] "edit members" endpoint that receives the diff from the client and edits it on the database
+- [ ] Add database
+  - [ ] "members" table as a one-to-many relation with itself

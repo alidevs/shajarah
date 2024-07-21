@@ -28,13 +28,7 @@ impl Default for App {
                     Node::new(
                         4,
                         vec![
-                            Node::new(
-                                10,
-                                vec![
-                                    // Node::new(12, vec![]),
-                                    // Node::new(13, vec![]),
-                                ],
-                            ),
+                            Node::new(10, vec![Node::new(12, vec![]), Node::new(13, vec![])]),
                             Node::new(11, vec![]),
                         ],
                     ),
