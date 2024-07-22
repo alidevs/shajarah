@@ -1,7 +1,7 @@
 use ar_reshaper::{config::LigaturesFlags, ArabicReshaper, ReshaperConfig};
 use egui::{
     epaint::CubicBezierShape, text::LayoutJob, Color32, FontFamily, FontId, PointerButton, Pos2,
-    Sense, Shape, Stroke, TextFormat, Vec2,
+    Rect, Rounding, Sense, Shape, Stroke, TextFormat, Vec2,
 };
 
 use crate::{zoom::Zoom, Input};
@@ -132,7 +132,19 @@ impl Node {
         );
 
         if self.children.is_empty() {
-            painter.circle_filled(offset, NODE_RADIUS * scale, Color32::RED);
+            painter.circle_filled(offset, NODE_RADIUS * scale, Color32::LIGHT_BLUE);
+
+            let image_rect = Rect::from_center_size(
+                offset,
+                (Vec2::splat(NODE_RADIUS * 2.) * scale) + Vec2::splat(1.0), // add one pixel to cover the whole background circle
+            );
+
+            #[cfg(feature = "debug-ui")]
+            painter.rect_stroke(image_rect, Rounding::ZERO, Stroke::new(2.0, Color32::GREEN));
+
+            egui::Image::from_uri("https://r2.bksalman.com/ppL.webp")
+                .rounding(Rounding::same(NODE_RADIUS * 2.) * scale)
+                .paint_at(&ui, image_rect);
             return;
         }
 
@@ -152,12 +164,18 @@ impl Node {
                 );
             } else {
                 let control_point1 = Pos2::new(offset.x, child_y - (NODE_PADDING * scale));
-                // painter.circle_filled(control_point1, 10., Color32::WHITE);
+
+                #[cfg(feature = "debug-ui")]
+                painter.circle_filled(control_point1, 10., Color32::WHITE);
+
                 let control_point2 = Pos2::new(
                     child_x + (NODE_RADIUS * scale),
                     offset.y + (NODE_PADDING * scale),
                 );
-                // painter.circle_filled(control_point2, 10., Color32::YELLOW);
+
+                #[cfg(feature = "debug-ui")]
+                painter.circle_filled(control_point2, 10., Color32::YELLOW);
+
                 painter.add(Shape::CubicBezier(CubicBezierShape::from_points_stroke(
                     [
                         Pos2::new(offset.x, offset.y + (NODE_RADIUS * scale)),
@@ -191,7 +209,26 @@ impl Node {
         }
 
         let painter = ui.painter();
-        painter.circle_filled(offset, NODE_RADIUS * scale, Color32::RED);
+        painter.circle_filled(offset, NODE_RADIUS * scale, Color32::LIGHT_BLUE);
+        let image = egui::include_image!("../assets/yoda.png");
+        let image_rect = Rect::from_center_size(
+            offset,
+            (Vec2::splat(NODE_RADIUS * 2.) * scale) + Vec2::splat(1.0), // add one pixel to cover the whole background circle
+        );
+
+        #[cfg(feature = "debug-ui")]
+        painter.rect_stroke(image_rect, Rounding::ZERO, Stroke::new(2.0, Color32::GREEN));
+
+        egui::Image::new(image)
+            .rounding(Rounding::same(NODE_RADIUS * 2.) * scale)
+            .paint_at(&ui, image_rect);
+
+        #[cfg(feature = "debug-ui")]
+        painter.circle_stroke(
+            offset,
+            NODE_RADIUS * scale,
+            Stroke::new(1.0, Color32::GREEN),
+        );
     }
 
     fn children_shift(&self) -> f32 {

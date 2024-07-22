@@ -24,6 +24,9 @@ log = "0.4"
 serde = { version = "1", features = ["derive"] }
 lazy_static = "1.5.0"
 ar-reshaper = "1.5.0"
+egui_extras = { version = "0.28.1", features = ["image", "http"] }
+image = { version = "0.25", features = ["jpeg", "png", "webp"] }
+ehttp = "0.5.0"
 
 # native:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
@@ -49,6 +52,7 @@ opt-level = 2
 # this includes a fix/workaround for text inputs on iOS browsers
 eframe = { git = "https://github.com/bksalman/egui", branch = "fix-ios-canvas-focus" }
 egui = { git = "https://github.com/bksalman/egui", branch = "fix-ios-canvas-focus" }
+egui_extras = { git = "https://github.com/bksalman/egui", branch = "fix-ios-canvas-focus" }
 
 # If you want to use the bleeding edge version of egui and eframe:
 # egui = { git = "https://github.com/emilk/egui", branch = "master" }
@@ -57,3 +61,6 @@ egui = { git = "https://github.com/bksalman/egui", branch = "fix-ios-canvas-focu
 # If you fork https://github.com/emilk/egui you can test with:
 # egui = { path = "../egui/crates/egui" }
 # eframe = { path = "../egui/crates/eframe" }
+
+[features]
+debug-ui = []

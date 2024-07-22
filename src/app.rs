@@ -42,6 +42,10 @@ impl Default for App {
 impl App {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         setup_fonts(&cc.egui_ctx);
+        egui_extras::install_image_loaders(&cc.egui_ctx);
+        cc.egui_ctx.style_mut(|style| {
+            style.visuals.image_loading_spinners = true;
+        });
 
         if let Some(storage) = cc.storage {
             return eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default();
