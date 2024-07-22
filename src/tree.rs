@@ -144,7 +144,7 @@ impl Node {
 
             egui::Image::from_uri("https://r2.bksalman.com/ppL.webp")
                 .rounding(Rounding::same(NODE_RADIUS * 2.) * scale)
-                .paint_at(&ui, image_rect);
+                .paint_at(ui, image_rect);
             return;
         }
 
@@ -221,7 +221,7 @@ impl Node {
 
         egui::Image::new(image)
             .rounding(Rounding::same(NODE_RADIUS * 2.) * scale)
-            .paint_at(&ui, image_rect);
+            .paint_at(ui, image_rect);
 
         #[cfg(feature = "debug-ui")]
         painter.circle_stroke(
