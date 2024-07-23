@@ -34,3 +34,7 @@ fn setup_fonts(ctx: &egui::Context) {
 
     ctx.set_fonts(fonts);
 }
+
+fn load_family_data() -> Node {
+    todo!()
+}
