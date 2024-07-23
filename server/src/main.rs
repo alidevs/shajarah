@@ -1,50 +1,46 @@
 use std::sync::Arc;
 
-use axum::{routing::get, Router};
-use server::{api::members::get_members, AppState, Node};
+use axum::{
+    http::{HeaderValue, Method},
+    routing::get,
+    Router,
+};
+use server::{
+    api::members::{add_member, get_members},
+    AppState,
+};
+use sqlx::PgPool;
+use tower_http::cors::CorsLayer;
 
 #[tokio::main]
 async fn main() {
-    let app_state = Arc::new(AppState {
-        root_member: Node::new(
-            1,
-            String::from("سلمان"),
-            vec![
-                Node::new(
-                    2,
-                    String::from("سلمان"),
-                    vec![
-                        Node::new(6, String::from("سلمان"), vec![]),
-                        Node::new(7, String::from("سلمان"), vec![]),
-                        Node::new(8, String::from("سلمان"), vec![]),
-                    ],
-                ),
-                Node::new(3, String::from("سلمان"), vec![]),
-                Node::new(
-                    4,
-                    String::from("سلمان"),
-                    vec![
-                        Node::new(
-                            9,
-                            String::from("سلمان"),
-                            vec![
-                                Node::new(11, String::from("سلمان"), vec![]),
-                                Node::new(12, String::from("سلمان"), vec![]),
-                            ],
-                        ),
-                        Node::new(10, String::from("سلمان"), vec![]),
-                    ],
-                ),
-                Node::new(5, String::from("سلمان"), vec![]),
-            ],
-        ),
-    });
+    dotenvy::dotenv().ok();
+
+    let pool = PgPool::connect(&std::env::var("DATABASE_URL").unwrap())
+        .await
+        .unwrap();
+
+    let app_state = Arc::new(AppState { db_pool: pool });
 
     let app = Router::new()
         .route("/", get(|| async { "Hello, World!" }))
-        .route("/members", get(get_members))
+        .route("/api/members", get(get_members).post(add_member))
+        .layer(
+            CorsLayer::new()
+                .allow_origin([
+                    "http://localhost:3001".parse::<HeaderValue>().unwrap(),
+                    "http://localhost:9393".parse::<HeaderValue>().unwrap(),
+                    "https://shajarah.bksalman.com"
+                        .parse::<HeaderValue>()
+                        .unwrap(),
+                ])
+                .allow_methods([Method::GET]),
+        )
         .with_state(app_state);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8383").await.unwrap();
+
+    println!("listening on {}", listener.local_addr().unwrap());
+
     axum::serve(listener, app).await.unwrap();
 }

@@ -1,42 +1,11 @@
-use crate::{
-    setup_fonts,
-    tree::{Node, TreeUi},
-};
+use std::sync::mpsc::{self, Receiver, Sender};
 
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(default)]
+use crate::{load_family_data, setup_fonts, tree::TreeUi, Message};
+
 pub struct App {
-    #[serde(skip)]
     tree: TreeUi,
-}
-
-impl Default for App {
-    fn default() -> Self {
-        Self {
-            tree: TreeUi::new(Node::new(
-                1,
-                vec![
-                    Node::new(
-                        2,
-                        vec![
-                            Node::new(6, vec![]),
-                            Node::new(7, vec![]),
-                            Node::new(8, vec![]),
-                        ],
-                    ),
-                    Node::new(3, vec![]),
-                    Node::new(
-                        4,
-                        vec![
-                            Node::new(9, vec![Node::new(11, vec![]), Node::new(12, vec![])]),
-                            Node::new(10, vec![]),
-                        ],
-                    ),
-                    Node::new(5, vec![]),
-                ],
-            )),
-        }
-    }
+    message_receiver: Receiver<Message>,
+    message_sender: Sender<Message>,
 }
 
 impl App {
@@ -48,7 +17,15 @@ impl App {
         //     return eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default();
         // }
 
-        Default::default()
+        let (sender, receiver) = mpsc::channel();
+
+        load_family_data(sender.clone());
+
+        Self {
+            tree: TreeUi::new(None),
+            message_receiver: receiver,
+            message_sender: sender,
+        }
     }
 }
 
@@ -78,5 +55,11 @@ impl eframe::App for App {
         egui::CentralPanel::default().show(ctx, |ui| {
             self.tree.draw(ui);
         });
+
+        if let Ok(message) = self.message_receiver.try_recv() {
+            match message {
+                Message::LoadedFamilyData(root_node) => self.tree.set_root(Some(root_node)),
+            }
+        }
     }
 }

@@ -3,13 +3,21 @@
 mod app;
 mod tree;
 mod zoom;
+use std::sync::mpsc::Sender;
+
 pub use app::App;
-use egui::Pos2;
+use serde::{Deserialize, Serialize};
 use tree::Node;
 
-pub struct Input {
-    hover_pos: Option<Pos2>,
-    zoom_delta: f32,
+#[derive(Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Gender {
+    Male,
+    Female,
+}
+
+enum Message {
+    LoadedFamilyData(Node),
 }
 
 fn setup_fonts(ctx: &egui::Context) {
@@ -35,6 +43,27 @@ fn setup_fonts(ctx: &egui::Context) {
     ctx.set_fonts(fonts);
 }
 
-fn load_family_data() -> Node {
-    todo!()
+fn load_family_data(sender: Sender<Message>) {
+    let request = ehttp::Request::get("http://localhost:8383/api/members");
+    ehttp::fetch(request, move |res| match res {
+        Ok(res) => {
+            if !res.ok {
+                log::error!("{res:?}");
+                return;
+            }
+
+            match res.json::<Node>() {
+                Ok(node) => {
+                    let _ = sender.send(Message::LoadedFamilyData(node));
+                    log::info!("Loaded family data successfully");
+                }
+                Err(e) => {
+                    log::error!("failed to fetch family data: {e}");
+                }
+            }
+        }
+        Err(e) => {
+            log::error!("failed to fetch family data: {e}");
+        }
+    });
 }

@@ -1,10 +1,12 @@
 use ar_reshaper::{config::LigaturesFlags, ArabicReshaper, ReshaperConfig};
+use chrono::{DateTime, Utc};
 use egui::{
     epaint::CubicBezierShape, text::LayoutJob, Align, Color32, FontFamily, FontId, PointerButton,
     Pos2, Rect, Rounding, Sense, Shape, TextFormat, Vec2, Vec2b,
 };
+use serde::{Deserialize, Serialize};
 
-use crate::zoom::Zoom;
+use crate::{zoom::Zoom, Gender};
 
 const NODE_RADIUS: f32 = 30.;
 const NODE_PADDING: f32 = 10. * 10.;
@@ -19,19 +21,21 @@ pub struct TreeUi {
     offset: Vec2,
     centered: bool,
     scale: f32,
-    prev_scale: f32,
-    root: Node,
+    root: Option<Node>,
 }
 
 impl TreeUi {
-    pub fn new(root: Node) -> Self {
+    pub fn new(root: Option<Node>) -> Self {
         Self {
             offset: Vec2::ZERO,
             centered: false,
             scale: 1.,
-            prev_scale: 1.,
             root,
         }
+    }
+
+    pub fn set_root(&mut self, root: Option<Node>) {
+        self.root = root;
     }
 
     pub fn draw(&mut self, ui: &mut egui::Ui) {
@@ -53,21 +57,23 @@ impl TreeUi {
         if let Some(hover_pos) = ui.ctx().input(|i| i.pointer.hover_pos()) {
             if bg_rect.hovered() {
                 let zoom_delta = ui.ctx().input(|i| i.zoom_delta());
-                let new_scale = (self.scale * zoom_delta).clamp(MIN_SCALE, MAX_SCALE);
+                let prev_scale = self.scale;
+                let new_scale = (prev_scale * zoom_delta).clamp(MIN_SCALE, MAX_SCALE);
 
                 self.scale(new_scale);
-                let scale_factor = self.scale / self.prev_scale;
+                let scale_factor = self.scale / prev_scale;
                 let pos = self.offset - hover_pos.to_vec2();
 
                 self.offset = (pos * scale_factor) + hover_pos.to_vec2();
             }
         }
 
-        self.root.draw(ui, self.offset.to_pos2(), self.scale);
+        if let Some(root) = &mut self.root {
+            root.draw(ui, self.offset.to_pos2(), self.scale);
+        }
     }
 
     fn scale(&mut self, new_scale: f32) {
-        self.prev_scale = self.scale;
         self.scale = new_scale;
     }
 
@@ -80,21 +86,30 @@ impl TreeUi {
     // }
 }
 
+// #[derive(Serialize, Deserialize)]
+// pub struct Node {
+//     id: usize,
+//     name: String,
+//     #[serde(skip)]
+//     window_is_open: bool,
+
+//     children: Vec<Node>,
+// }
+
+#[derive(Serialize, Deserialize)]
 pub struct Node {
-    id: usize,
-    window_is_open: bool,
+    id: i64,
+    name: String,
+    gender: Gender,
+    birthday: Option<DateTime<Utc>>,
+    last_name: String,
     children: Vec<Node>,
+
+    #[serde(skip)]
+    window_is_open: bool,
 }
 
 impl Node {
-    pub fn new(id: usize, children: Vec<Node>) -> Self {
-        Self {
-            id,
-            children,
-            window_is_open: false,
-        }
-    }
-
     // pub fn add_child(&mut self, child: Node) {
     //     self.children.push(child);
     // }
@@ -110,7 +125,11 @@ impl Node {
 
         let mut job = LayoutJob::default();
         job.append(
-            &RESHAPER.reshape("سلمان").chars().rev().collect::<String>(),
+            &RESHAPER
+                .reshape(self.name.clone())
+                .chars()
+                .rev()
+                .collect::<String>(),
             0.0,
             TextFormat {
                 font_id: default_text_style.clone(),
@@ -137,11 +156,13 @@ impl Node {
         let clicked = response.clicked();
         if clicked {
             self.window_is_open = !self.window_is_open;
+            log::debug!("clicked id: {}", self.id);
         }
 
         let window_pos = offset + Vec2::new(NODE_RADIUS * 1.2, -(NODE_RADIUS / 2.)) * scale;
 
         egui::Window::new(self.id.to_string())
+            .id(egui::Id::new(self.id))
             .max_width(150.)
             .auto_sized()
             .resizable(false)

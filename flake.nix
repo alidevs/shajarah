@@ -22,6 +22,7 @@
             })
             trunk
             cargo-watch
+            sqlx-cli
           ];
 
           buildInputs = [
@@ -46,6 +47,19 @@
           ];
 
           LD_LIBRARY_PATH = "${lib.makeLibraryPath buildInputs}";
+
+          shellHook = ''
+            docker start shajarah-dev || \
+              docker run \
+              --name shajarah-dev \
+              -p 5445:5432 \
+              -e POSTGRES_PASSWORD=shajarah-dev \
+              -d postgres
+
+            grep DATABASE_URL .env || echo "DATABASE_URL=postgres://postgres:shajarah-dev@localhost:5445/postgres" >> .env
+
+            export $(cat .env)
+          '';
         };
       });
 }
