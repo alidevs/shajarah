@@ -1,3 +1,6 @@
+- [ ] Add a window that displays info about the clicked family member
+  - [x] Add the window with hard-coded data
+  - [ ] fetch data from the server and use it
 - [ ] Add backend
   - [ ] "add members" endpoint that receives the diff from the client and adds it to the database
   - [ ] "edit members" endpoint that receives the diff from the client and edits it on the database

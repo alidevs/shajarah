@@ -1,4 +1,4 @@
-//! shamelessly stolen from https://github.dev/zakarumych/egui-snarl/blob/main/src/ui.rs
+//! shamelessly stolen from https://github.com/zakarumych/egui-snarl/blob/main/src/ui/zoom.rs
 
 use egui::{
     epaint::{PathStroke, Shadow},

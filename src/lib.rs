@@ -5,10 +5,11 @@ mod tree;
 mod zoom;
 pub use app::App;
 use egui::Pos2;
+use tree::Node;
 
 pub struct Input {
     hover_pos: Option<Pos2>,
-    scroll_delta: f32,
+    zoom_delta: f32,
 }
 
 fn setup_fonts(ctx: &egui::Context) {

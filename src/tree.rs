@@ -1,14 +1,13 @@
 use ar_reshaper::{config::LigaturesFlags, ArabicReshaper, ReshaperConfig};
 use egui::{
-    epaint::CubicBezierShape, text::LayoutJob, Color32, FontFamily, FontId, PointerButton, Pos2,
-    Rect, Rounding, Sense, Shape, Stroke, TextFormat, Vec2,
+    epaint::CubicBezierShape, text::LayoutJob, Align, Color32, FontFamily, FontId, PointerButton,
+    Pos2, Rect, Rounding, Sense, Shape, TextFormat, Vec2, Vec2b,
 };
 
-use crate::{zoom::Zoom, Input};
+use crate::zoom::Zoom;
 
 const NODE_RADIUS: f32 = 30.;
 const NODE_PADDING: f32 = 10. * 10.;
-const SCROLL_VELOCITY: f32 = 0.005;
 const MAX_SCALE: f32 = 5.0;
 const MIN_SCALE: f32 = 0.2;
 const RESHAPER: ArabicReshaper = ArabicReshaper::new(ReshaperConfig::new(
@@ -40,11 +39,6 @@ impl TreeUi {
         let viewport = bg_rect.rect;
         ui.set_clip_rect(viewport);
 
-        let input = ui.ctx().input(|i| Input {
-            scroll_delta: i.raw_scroll_delta.y,
-            hover_pos: i.pointer.hover_pos(),
-        });
-
         ui.style_mut().zoom(self.scale);
 
         if bg_rect.dragged_by(PointerButton::Primary) {
@@ -56,23 +50,18 @@ impl TreeUi {
             self.centered = true;
         }
 
-        self.offset = match input.hover_pos {
-            Some(hover_pos) if viewport.contains(hover_pos) => {
-                if input.scroll_delta != 0.0 {
-                    let new_scale = (self.scale * (1.0 + input.scroll_delta * SCROLL_VELOCITY))
-                        .clamp(MIN_SCALE, MAX_SCALE);
+        if let Some(hover_pos) = ui.ctx().input(|i| i.pointer.hover_pos()) {
+            if bg_rect.hovered() {
+                let zoom_delta = ui.ctx().input(|i| i.zoom_delta());
+                let new_scale = (self.scale * zoom_delta).clamp(MIN_SCALE, MAX_SCALE);
 
-                    self.scale(new_scale);
-                    let scale_factor = self.scale / self.prev_scale;
+                self.scale(new_scale);
+                let scale_factor = self.scale / self.prev_scale;
+                let pos = self.offset - hover_pos.to_vec2();
 
-                    let pos = self.offset - hover_pos.to_vec2();
-                    (pos * scale_factor) + hover_pos.to_vec2()
-                } else {
-                    self.offset
-                }
+                self.offset = (pos * scale_factor) + hover_pos.to_vec2();
             }
-            _ => self.offset,
-        };
+        }
 
         self.root.draw(ui, self.offset.to_pos2(), self.scale);
     }
@@ -92,15 +81,17 @@ impl TreeUi {
 }
 
 pub struct Node {
-    // id: usize,
+    id: usize,
+    window_is_open: bool,
     children: Vec<Node>,
 }
 
 impl Node {
-    pub fn new(_id: usize, children: Vec<Node>) -> Self {
+    pub fn new(id: usize, children: Vec<Node>) -> Self {
         Self {
-            // id,
+            id,
             children,
+            window_is_open: false,
         }
     }
 
@@ -108,15 +99,21 @@ impl Node {
     //     self.children.push(child);
     // }
 
-    pub fn draw(&self, ui: &mut egui::Ui, offset: Pos2, scale: f32) {
+    pub fn draw(&mut self, ui: &mut egui::Ui, offset: Pos2, scale: f32) {
+        let stroke = ui.visuals().widgets.noninteractive.fg_stroke;
         let painter = ui.painter();
+
+        let default_text_style = egui::style::default_text_styles()
+            .get(&egui::TextStyle::Monospace)
+            .map(|f| FontId::new(f.size * scale, f.family.clone()))
+            .unwrap_or(FontId::new(14.0 * scale, FontFamily::Monospace));
 
         let mut job = LayoutJob::default();
         job.append(
             &RESHAPER.reshape("سلمان").chars().rev().collect::<String>(),
             0.0,
             TextFormat {
-                font_id: FontId::new(14.0 * scale, FontFamily::Monospace),
+                font_id: default_text_style.clone(),
                 color: ui.visuals().text_color(),
                 ..Default::default()
             },
@@ -124,20 +121,53 @@ impl Node {
         let galley = painter.layout_job(job);
         painter.galley(
             Pos2::new(
-                offset.x - (galley.size().x / 2.),
-                offset.y - ((NODE_RADIUS * 2.) * scale),
+                offset.x - ((NODE_RADIUS * 2.) * scale),
+                offset.y - (galley.size().y / 2.),
             ),
             galley,
             Color32::WHITE,
         );
 
-        if self.children.is_empty() {
-            painter.circle_filled(offset, NODE_RADIUS * scale, Color32::LIGHT_BLUE);
+        let image_rect = Rect::from_center_size(
+            offset,
+            (Vec2::splat(NODE_RADIUS * 2.) * scale) + Vec2::splat(1.0), // add one pixel to cover the whole background circle
+        );
 
-            let image_rect = Rect::from_center_size(
-                offset,
-                (Vec2::splat(NODE_RADIUS * 2.) * scale) + Vec2::splat(1.0), // add one pixel to cover the whole background circle
-            );
+        let response = ui.allocate_rect(image_rect, Sense::click());
+        let clicked = response.clicked();
+        if clicked {
+            self.window_is_open = !self.window_is_open;
+        }
+
+        let window_pos = offset + Vec2::new(NODE_RADIUS * 1.2, -(NODE_RADIUS / 2.)) * scale;
+
+        egui::Window::new(self.id.to_string())
+            .max_width(150.)
+            .auto_sized()
+            .resizable(false)
+            .constrain(false)
+            .default_pos(window_pos)
+            .collapsible(false)
+            .title_bar(false)
+            .scroll(Vec2b::TRUE)
+            .enabled(true)
+            .open(&mut self.window_is_open)
+            .current_pos(window_pos)
+            .show(ui.ctx(), |ui| {
+                ui.with_layout(egui::Layout::top_down(Align::RIGHT), |ui| {
+                    ui.label(
+                        RESHAPER
+                            .reshape("سلمان فيصل أحمد أبوحيمد")
+                            .chars()
+                            .rev()
+                            .collect::<String>(),
+                    );
+                });
+            });
+
+        if self.children.is_empty() {
+            let painter = ui.painter();
+            painter.circle_filled(offset, NODE_RADIUS * scale, Color32::LIGHT_BLUE);
 
             #[cfg(feature = "debug-ui")]
             painter.rect_stroke(image_rect, Rounding::ZERO, Stroke::new(2.0, Color32::GREEN));
@@ -145,11 +175,14 @@ impl Node {
             egui::Image::from_uri("https://r2.bksalman.com/ppL.webp")
                 .rounding(Rounding::same(NODE_RADIUS * 2.) * scale)
                 .paint_at(ui, image_rect);
+
+            if response.hovered() {
+                let painter = ui.painter();
+                painter.circle_stroke(offset, NODE_RADIUS * scale, stroke);
+            }
+
             return;
         }
-
-        let stroke = ui.visuals().widgets.noninteractive.fg_stroke;
-        let stroke = Stroke::new(stroke.width * scale, stroke.color);
 
         let mut child_x = offset.x - ((self.children_shift() / 2.) * scale);
         let child_y = offset.y + ((NODE_RADIUS * 2. + NODE_PADDING) * scale);
@@ -198,7 +231,7 @@ impl Node {
 
         let mut child_x = offset.x - ((self.children_shift() / 2.) * scale);
         // draw nodes
-        for child in self.children.iter() {
+        for child in self.children.iter_mut() {
             child.draw(
                 ui,
                 Pos2::new(child_x + (NODE_RADIUS * scale), child_y),
@@ -229,6 +262,11 @@ impl Node {
             NODE_RADIUS * scale,
             Stroke::new(1.0, Color32::GREEN),
         );
+
+        if response.hovered() {
+            let painter = ui.painter();
+            painter.circle_stroke(offset, NODE_RADIUS * scale, stroke);
+        }
     }
 
     fn children_shift(&self) -> f32 {
