@@ -21,15 +21,15 @@ impl Default for App {
                         vec![
                             Node::new(6, vec![]),
                             Node::new(7, vec![]),
-                            Node::new(9, vec![]),
+                            Node::new(8, vec![]),
                         ],
                     ),
                     Node::new(3, vec![]),
                     Node::new(
                         4,
                         vec![
-                            Node::new(10, vec![Node::new(12, vec![]), Node::new(13, vec![])]),
-                            Node::new(11, vec![]),
+                            Node::new(9, vec![Node::new(11, vec![]), Node::new(12, vec![])]),
+                            Node::new(10, vec![]),
                         ],
                     ),
                     Node::new(5, vec![]),
@@ -43,21 +43,18 @@ impl App {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         setup_fonts(&cc.egui_ctx);
         egui_extras::install_image_loaders(&cc.egui_ctx);
-        cc.egui_ctx.style_mut(|style| {
-            style.visuals.image_loading_spinners = true;
-        });
 
-        if let Some(storage) = cc.storage {
-            return eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default();
-        }
+        // if let Some(storage) = cc.storage {
+        //     return eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default();
+        // }
 
         Default::default()
     }
 }
 
 impl eframe::App for App {
-    fn save(&mut self, storage: &mut dyn eframe::Storage) {
-        eframe::set_value(storage, eframe::APP_KEY, self);
+    fn save(&mut self, _storage: &mut dyn eframe::Storage) {
+        // eframe::set_value(storage, eframe::APP_KEY, self);
     }
 
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
