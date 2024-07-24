@@ -101,7 +101,7 @@ impl TreeUi {
 //     children: Vec<Node>,
 // }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Node {
     pub id: i32,
     name: String,
@@ -278,16 +278,14 @@ impl Node {
 
         let mut child_x = offset.x - ((self.children_shift() / 2.) * scale);
         let node = self.clone();
+        lineage.push(node.clone().into());
         // draw nodes
         for child in self.children.iter_mut() {
             child.draw(
                 ui,
                 Pos2::new(child_x + (NODE_RADIUS * scale), child_y),
                 scale,
-                {
-                    lineage.push(node.clone().into());
-                    lineage.clone()
-                },
+                lineage.clone(),
             );
             let child_children_shift = child.children_shift();
             child_x += ((child_children_shift + NODE_PADDING) * scale) + galley_c.size().x;
@@ -341,7 +339,7 @@ impl Node {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SimpleNode {
     pub id: i32,
     name: String,

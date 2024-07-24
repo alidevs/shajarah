@@ -9,7 +9,7 @@ pub use app::App;
 use serde::{Deserialize, Serialize};
 use tree::Node;
 
-#[derive(Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Gender {
     Male,
