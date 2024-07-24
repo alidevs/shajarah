@@ -1,11 +1,10 @@
-use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::mpsc::{self, Receiver};
 
 use crate::{load_family_data, setup_fonts, tree::TreeUi, Message};
 
 pub struct App {
     tree: TreeUi,
     message_receiver: Receiver<Message>,
-    message_sender: Sender<Message>,
 }
 
 impl App {
@@ -24,7 +23,6 @@ impl App {
         Self {
             tree: TreeUi::new(None),
             message_receiver: receiver,
-            message_sender: sender,
         }
     }
 }

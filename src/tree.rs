@@ -1,5 +1,9 @@
 use ar_reshaper::{config::LigaturesFlags, ArabicReshaper, ReshaperConfig};
 use chrono::{DateTime, Utc};
+
+#[cfg(feature = "debug-ui")]
+use egui::Stroke;
+
 use egui::{
     epaint::CubicBezierShape, text::LayoutJob, Align, Color32, FontFamily, FontId, PointerButton,
     Pos2, Rect, Rounding, Sense, Shape, TextFormat, Vec2, Vec2b,
@@ -10,6 +14,7 @@ use crate::{zoom::Zoom, Gender};
 
 const NODE_RADIUS: f32 = 30.;
 const NODE_PADDING: f32 = 10. * 10.;
+const NODE_TEXT_PADDING: f32 = 10.;
 const MAX_SCALE: f32 = 5.0;
 const MIN_SCALE: f32 = 0.2;
 const RESHAPER: ArabicReshaper = ArabicReshaper::new(ReshaperConfig::new(
@@ -69,7 +74,7 @@ impl TreeUi {
         }
 
         if let Some(root) = &mut self.root {
-            root.draw(ui, self.offset.to_pos2(), self.scale);
+            root.draw(ui, self.offset.to_pos2(), self.scale, vec![]);
         }
     }
 
@@ -96,14 +101,14 @@ impl TreeUi {
 //     children: Vec<Node>,
 // }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Node {
-    id: i64,
+    pub id: i32,
     name: String,
     gender: Gender,
     birthday: Option<DateTime<Utc>>,
     last_name: String,
-    children: Vec<Node>,
+    pub children: Vec<Node>,
 
     #[serde(skip)]
     window_is_open: bool,
@@ -114,7 +119,13 @@ impl Node {
     //     self.children.push(child);
     // }
 
-    pub fn draw(&mut self, ui: &mut egui::Ui, offset: Pos2, scale: f32) {
+    pub fn draw(
+        &mut self,
+        ui: &mut egui::Ui,
+        offset: Pos2,
+        scale: f32,
+        mut lineage: Vec<SimpleNode>,
+    ) {
         let stroke = ui.visuals().widgets.noninteractive.fg_stroke;
         let painter = ui.painter();
 
@@ -138,14 +149,14 @@ impl Node {
             },
         );
         let galley = painter.layout_job(job);
-        painter.galley(
-            Pos2::new(
-                offset.x - ((NODE_RADIUS * 2.) * scale),
-                offset.y - (galley.size().y / 2.),
-            ),
-            galley,
-            Color32::WHITE,
-        );
+
+        let galley_c = galley.clone();
+
+        let text_x =
+            (offset.x - (NODE_RADIUS * scale + galley.size().x)) - NODE_TEXT_PADDING * scale;
+        let text_y = offset.y - (galley.size().y / 2.);
+
+        painter.galley(Pos2::new(text_x, text_y), galley, Color32::WHITE);
 
         let image_rect = Rect::from_center_size(
             offset,
@@ -156,7 +167,6 @@ impl Node {
         let clicked = response.clicked();
         if clicked {
             self.window_is_open = !self.window_is_open;
-            log::debug!("clicked id: {}", self.id);
         }
 
         let window_pos = offset + Vec2::new(NODE_RADIUS * 1.2, -(NODE_RADIUS / 2.)) * scale;
@@ -176,9 +186,15 @@ impl Node {
             .current_pos(window_pos)
             .show(ui.ctx(), |ui| {
                 ui.with_layout(egui::Layout::top_down(Align::RIGHT), |ui| {
+                    let lineage = lineage
+                        .iter()
+                        .rev()
+                        .map(|l| format!("{} ", l.name.clone()))
+                        .take(2)
+                        .collect::<String>();
                     ui.label(
                         RESHAPER
-                            .reshape("سلمان فيصل أحمد أبوحيمد")
+                            .reshape(format!("{} {}{}", self.name, lineage, self.last_name))
                             .chars()
                             .rev()
                             .collect::<String>(),
@@ -201,6 +217,16 @@ impl Node {
                 let painter = ui.painter();
                 painter.circle_stroke(offset, NODE_RADIUS * scale, stroke);
             }
+
+            #[cfg(feature = "debug-ui")]
+            painter.rect_stroke(
+                Rect {
+                    min: Pos2::new(text_x, text_y),
+                    max: Pos2::new(text_x + galley_c.size().x, text_y + galley_c.size().y),
+                },
+                Rounding::ZERO,
+                Stroke::new(1., Color32::GREEN),
+            );
 
             return;
         }
@@ -247,19 +273,24 @@ impl Node {
             }
 
             let child_children_shift = child.children_shift();
-            child_x += (child_children_shift + NODE_PADDING) * scale;
+            child_x += ((child_children_shift + NODE_PADDING) * scale) + galley_c.size().x;
         }
 
         let mut child_x = offset.x - ((self.children_shift() / 2.) * scale);
+        let node = self.clone();
         // draw nodes
         for child in self.children.iter_mut() {
             child.draw(
                 ui,
                 Pos2::new(child_x + (NODE_RADIUS * scale), child_y),
                 scale,
+                {
+                    lineage.push(node.clone().into());
+                    lineage.clone()
+                },
             );
             let child_children_shift = child.children_shift();
-            child_x += (child_children_shift + NODE_PADDING) * scale;
+            child_x += ((child_children_shift + NODE_PADDING) * scale) + galley_c.size().x;
         }
 
         let painter = ui.painter();
@@ -288,6 +319,16 @@ impl Node {
             let painter = ui.painter();
             painter.circle_stroke(offset, NODE_RADIUS * scale, stroke);
         }
+
+        #[cfg(feature = "debug-ui")]
+        painter.rect_stroke(
+            Rect {
+                min: Pos2::new(text_x, text_y),
+                max: Pos2::new(text_x + galley_c.size().x, text_y + galley_c.size().y),
+            },
+            Rounding::ZERO,
+            Stroke::new(1., Color32::GREEN),
+        );
     }
 
     fn children_shift(&self) -> f32 {
@@ -297,5 +338,38 @@ impl Node {
 
         ((NODE_RADIUS * 2.) * self.children.len() as f32)
             + (NODE_PADDING * self.children.len().saturating_sub(1) as f32)
+    }
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct SimpleNode {
+    pub id: i32,
+    name: String,
+    gender: Gender,
+    birthday: Option<DateTime<Utc>>,
+    last_name: String,
+}
+
+impl From<Node> for SimpleNode {
+    fn from(value: Node) -> Self {
+        Self {
+            id: value.id,
+            name: value.name,
+            gender: value.gender,
+            birthday: value.birthday,
+            last_name: value.last_name,
+        }
+    }
+}
+
+impl From<&Node> for SimpleNode {
+    fn from(value: &Node) -> Self {
+        Self {
+            id: value.id,
+            name: value.name.clone(),
+            gender: value.gender,
+            birthday: value.birthday,
+            last_name: value.last_name.clone(),
+        }
     }
 }

@@ -1,5 +1,6 @@
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
+use anyhow::anyhow;
 use axum::{extract::State, Json};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -12,13 +13,33 @@ pub struct NewMember {
     last_name: String,
     gender: Gender,
     birthday: chrono::DateTime<chrono::Utc>,
-    mother_id: Option<i64>,
-    father_id: Option<i64>,
+    mother_id: Option<i32>,
+    father_id: Option<i32>,
 }
 
-#[derive(Clone, Deserialize, Serialize)]
+#[allow(dead_code)]
+#[derive(Debug, sqlx::FromRow)]
+struct MemberRow {
+    id: i32,
+    name: String,
+    gender: Gender,
+    birthday: Option<chrono::DateTime<chrono::Utc>>,
+    last_name: String,
+    mother_id: Option<i32>,
+    mother_name: Option<String>,
+    mother_gender: Option<Gender>,
+    mother_birthday: Option<chrono::DateTime<chrono::Utc>>,
+    mother_last_name: Option<String>,
+    father_id: Option<i32>,
+    father_name: Option<String>,
+    father_gender: Option<Gender>,
+    father_birthday: Option<chrono::DateTime<chrono::Utc>>,
+    father_last_name: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct MemberResponse {
-    id: i64,
+    id: i32,
     name: String,
     gender: Gender,
     birthday: Option<DateTime<Utc>>,
@@ -26,12 +47,36 @@ pub struct MemberResponse {
     children: Vec<MemberResponse>,
 }
 
+impl MemberResponse {
+    fn add_children(&mut self, all_members: &Vec<MemberRow>) {
+        self.children = all_members
+            .iter()
+            .filter(|m| {
+                m.father_id.is_some_and(|fid| fid == self.id)
+                    || m.mother_id.is_some_and(|mid| mid == self.id)
+            })
+            .map(|m| MemberResponse {
+                id: m.id,
+                name: m.name.clone(),
+                gender: m.gender,
+                birthday: m.birthday,
+                last_name: m.last_name.clone(),
+                children: vec![],
+            })
+            .collect();
+        for child in &mut self.children {
+            child.add_children(all_members);
+        }
+    }
+}
+
 /// Get family members
 #[axum::debug_handler]
 pub async fn get_members(
     State(state): State<Arc<AppState>>,
 ) -> anyhow::Result<Json<MemberResponse>, AppError> {
-    let recs = sqlx::query!(
+    let recs = sqlx::query_as!(
+        MemberRow,
         r#"
 SELECT
     m.id,
@@ -60,53 +105,29 @@ LEFT JOIN
     .fetch_all(&state.db_pool)
     .await?;
 
-    let mut members = HashMap::new();
-    let mut parent_child_relations = Vec::new();
-
-    for rec in recs.iter() {
-        let member = MemberResponse {
-            id: rec.id,
-            name: rec.name.clone(),
-            gender: rec.gender.unwrap(),
-            birthday: rec.birthday,
-            last_name: rec.last_name.clone(),
-            children: Vec::new(),
-        };
-
-        members.insert(member.id, member);
-
-        if let Some(mother_id) = rec.mother_id {
-            if mother_id != rec.id {
-                parent_child_relations.push((mother_id, rec.id));
-            }
-        }
-
-        if let Some(father_id) = rec.father_id {
-            if father_id != rec.id {
-                parent_child_relations.push((father_id, rec.id));
-            }
-        }
+    if recs.is_empty() {
+        return Err(anyhow!("no records").into());
     }
 
-    for (parent_id, child_id) in parent_child_relations {
-        if let Some(child) = members.remove(&child_id) {
-            if let Some(parent) = members.get_mut(&parent_id) {
-                parent.children.push(child);
-            }
-        }
-    }
+    let Some(root) = recs
+        .iter()
+        .find(|rec| rec.father_id.is_none() && rec.mother_id.is_none())
+    else {
+        return Err(anyhow!("no root node").into());
+    };
 
-    let root_members: Vec<MemberResponse> = members
-        .values()
-        .filter(|member| {
-            !members
-                .values()
-                .any(|parent| parent.children.iter().any(|child| child.id == member.id))
-        })
-        .cloned()
-        .collect();
+    let mut root = MemberResponse {
+        id: root.id,
+        name: root.name.clone(),
+        gender: root.gender,
+        birthday: root.birthday,
+        last_name: root.last_name.clone(),
+        children: Vec::new(),
+    };
 
-    Ok(Json(root_members.get(0).unwrap().clone()))
+    root.add_children(&recs);
+
+    Ok(Json(root))
 }
 
 /// Add a family member

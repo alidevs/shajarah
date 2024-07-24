@@ -14,6 +14,7 @@ use tower_http::cors::CorsLayer;
 
 #[tokio::main]
 async fn main() {
+    env_logger::init();
     dotenvy::dotenv().ok();
 
     let pool = PgPool::connect(&std::env::var("DATABASE_URL").unwrap())
@@ -40,7 +41,7 @@ async fn main() {
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8383").await.unwrap();
 
-    println!("listening on {}", listener.local_addr().unwrap());
+    log::info!("listening on {}", listener.local_addr().unwrap());
 
     axum::serve(listener, app).await.unwrap();
 }
