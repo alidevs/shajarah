@@ -3,7 +3,7 @@
 mod app;
 mod tree;
 mod zoom;
-use std::sync::mpsc::Sender;
+use std::{sync::mpsc::Sender, time::Duration};
 
 pub use app::App;
 use serde::{Deserialize, Serialize};
@@ -43,7 +43,8 @@ fn setup_fonts(ctx: &egui::Context) {
     ctx.set_fonts(fonts);
 }
 
-fn load_family_data(sender: Sender<Message>) {
+fn load_family_data(sender: Sender<Message>, ctx: &egui::Context) {
+    let ctx = ctx.clone();
     let request = ehttp::Request::get("http://localhost:8383/api/members");
     ehttp::fetch(request, move |res| match res {
         Ok(res) => {
@@ -56,6 +57,7 @@ fn load_family_data(sender: Sender<Message>) {
                 Ok(node) => {
                     let _ = sender.send(Message::LoadedFamilyData(node));
                     log::info!("Received family data successfully");
+                    ctx.request_repaint();
                 }
                 Err(e) => {
                     log::error!("failed to fetch family data: {e}");

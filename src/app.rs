@@ -18,7 +18,7 @@ impl App {
 
         let (sender, receiver) = mpsc::channel();
 
-        load_family_data(sender.clone());
+        load_family_data(sender.clone(), &cc.egui_ctx);
 
         Self {
             tree: TreeUi::new(None),
