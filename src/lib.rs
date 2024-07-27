@@ -45,7 +45,7 @@ fn setup_fonts(ctx: &egui::Context) {
 
 fn load_family_data(sender: Sender<Message>, ctx: &egui::Context) {
     let ctx = ctx.clone();
-    let request = ehttp::Request::get("http://localhost:8383/api/members");
+    let request = ehttp::Request::get("http://192.168.0.132:3030/api/members");
     ehttp::fetch(request, move |res| match res {
         Ok(res) => {
             if !res.ok {

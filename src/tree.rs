@@ -7,8 +7,8 @@ use chrono::{DateTime, Utc};
 use egui::Stroke;
 
 use egui::{
-    epaint::CubicBezierShape, include_image, text::LayoutJob, Color32, FontFamily, FontId,
-    PointerButton, Pos2, Rect, Rounding, Sense, Shape, TextFormat, Vec2,
+    epaint::CubicBezierShape, include_image, text::LayoutJob, Align, Color32, FontFamily, FontId,
+    PointerButton, Pos2, Rect, Rounding, Sense, Shape, TextFormat, Vec2, Vec2b,
 };
 use serde::{Deserialize, Serialize};
 
@@ -474,7 +474,7 @@ impl TreeUi {
             }
         }
 
-        if let Some(root) = &self.root {
+        if let Some(root) = &mut self.root {
             if !self.centered {
                 if let Some(root) = self.layout_tree.root() {
                     let root_coords = &self.layout_tree[root];
@@ -490,75 +490,13 @@ impl TreeUi {
                 self.centered = true;
             }
 
-            let stroke = ui.visuals().widgets.noninteractive.fg_stroke;
-
-            let mut queue = std::collections::VecDeque::from(vec![root.clone()]);
-
-            while let Some(mut node) = queue.pop_front() {
-                let children = node.children.clone();
-
-                let coords = self
-                    .layout_tree
-                    .get(node.id)
-                    .expect("probably didn't update the layout tree");
-
-                let coords = Pos2::new(
-                    self.offset.x + (coords.x * 5.) * self.scale,
-                    self.offset.y + (coords.y * 5.) * self.scale,
-                );
-
-                let painter = ui.painter();
-
-                #[cfg(feature = "debug-ui")]
-                painter.line_segment([Pos2::new(coords.x, coords.y), viewport.center()], stroke);
-
-                #[cfg(feature = "debug-ui")]
-                {
-                    // log::debug!("coords: {coords:?}");
-                    log::debug!("offset: {:?}", self.offset);
-                }
-
-                for child in children.iter() {
-                    let child_coords = self
-                        .layout_tree
-                        .get(child.id)
-                        .expect("probably didn't update the layout tree");
-                    let child_coords = Pos2::new(
-                        self.offset.x + (child_coords.x * 5.) * self.scale,
-                        self.offset.y + (child_coords.y * 5.) * self.scale,
-                    );
-
-                    if child_coords.x == coords.x {
-                        painter.line_segment([child_coords, coords], stroke);
-                    } else {
-                        let control_point1 = Pos2::new(coords.x, child_coords.y);
-
-                        #[cfg(feature = "debug-ui")]
-                        painter.circle_filled(control_point1, 10., Color32::WHITE);
-
-                        let control_point2 = Pos2::new(child_coords.x, coords.y);
-
-                        #[cfg(feature = "debug-ui")]
-                        painter.circle_filled(control_point2, 10., Color32::YELLOW);
-
-                        painter.add(Shape::CubicBezier(CubicBezierShape::from_points_stroke(
-                            [
-                                Pos2::new(coords.x, coords.y),
-                                control_point1,
-                                control_point2,
-                                Pos2::new(child_coords.x, child_coords.y),
-                            ],
-                            false,
-                            Color32::TRANSPARENT,
-                            stroke,
-                        )));
-                    }
-                }
-
-                node.draw(ui, Pos2::new(coords.x, coords.y), self.scale);
-
-                queue.extend(children);
-            }
+            root.draw(
+                ui,
+                self.offset.to_pos2(),
+                self.scale,
+                &self.layout_tree,
+                vec![],
+            );
         }
     }
 
@@ -627,6 +565,8 @@ pub struct Node {
     gender: Gender,
     birthday: Option<DateTime<Utc>>,
     last_name: String,
+    father_id: Option<i32>,
+    mother_id: Option<i32>,
     pub children: Vec<Node>,
 
     /// used for displaying or hiding the member info window
@@ -644,15 +584,109 @@ impl Node {
         ui: &mut egui::Ui,
         offset: Pos2,
         scale: f32,
-        // mut lineage: Vec<SimpleNode>,
+        layout_tree: &LayoutTree,
+        mut lineage: Vec<SimpleNode>,
     ) {
         let stroke = ui.visuals().widgets.noninteractive.fg_stroke;
-        let painter = ui.painter();
+        let coords = layout_tree
+            .get(self.id)
+            .expect("probably didn't update the layout tree");
+        let coords = Pos2::new(
+            offset.x + (coords.x * 5.) * scale,
+            offset.y + (coords.y * 5.) * scale,
+        );
 
         let default_text_style = egui::style::default_text_styles()
             .get(&egui::TextStyle::Monospace)
             .map(|f| FontId::new(f.size * scale, f.family.clone()))
             .unwrap_or(FontId::new(14.0 * scale, FontFamily::Monospace));
+
+        let painter = ui.painter();
+
+        #[cfg(feature = "debug-ui")]
+        painter.line_segment([Pos2::new(coords.x, coords.y), viewport.center()], stroke);
+
+        #[cfg(feature = "debug-ui")]
+        {
+            // log::debug!("coords: {coords:?}");
+            log::debug!("offset: {:?}", self.offset);
+        }
+
+        for child in self.children.iter() {
+            let child_coords = layout_tree
+                .get(child.id)
+                .expect("probably didn't update the layout tree");
+            let child_coords = Pos2::new(
+                offset.x + (child_coords.x * 5.) * scale,
+                offset.y + (child_coords.y * 5.) * scale,
+            );
+
+            if child_coords.x == coords.x {
+                painter.line_segment([child_coords, coords], stroke);
+            } else {
+                let control_point1 = Pos2::new(coords.x, child_coords.y);
+
+                #[cfg(feature = "debug-ui")]
+                painter.circle_filled(control_point1, 10., Color32::WHITE);
+
+                let control_point2 = Pos2::new(child_coords.x, coords.y);
+
+                #[cfg(feature = "debug-ui")]
+                painter.circle_filled(control_point2, 10., Color32::YELLOW);
+
+                painter.add(Shape::CubicBezier(CubicBezierShape::from_points_stroke(
+                    [
+                        Pos2::new(coords.x, coords.y),
+                        control_point1,
+                        control_point2,
+                        Pos2::new(child_coords.x, child_coords.y),
+                    ],
+                    false,
+                    Color32::TRANSPARENT,
+                    stroke,
+                )));
+            }
+        }
+
+        let window_pos = coords + Vec2::new(NODE_RADIUS * 1.2, -(NODE_RADIUS / 2.)) * scale;
+
+        egui::Window::new(self.id.to_string())
+            .id(egui::Id::new(self.id))
+            .max_width(150.)
+            .auto_sized()
+            .resizable(false)
+            .constrain(false)
+            .default_pos(window_pos)
+            .collapsible(false)
+            .title_bar(false)
+            .scroll(Vec2b::TRUE)
+            .enabled(true)
+            .open(&mut self.window_is_open)
+            .current_pos(window_pos)
+            .show(ui.ctx(), |ui| {
+                ui.with_layout(egui::Layout::top_down(Align::RIGHT), |ui| {
+                    let lineage = lineage
+                        .iter()
+                        .rev()
+                        .map(|l| format!("{} ", l.name.clone()))
+                        .take(2)
+                        .collect::<String>();
+                    ui.label(
+                        RESHAPER
+                            .reshape(format!("{} {}{}", self.name, lineage, self.last_name))
+                            .chars()
+                            .rev()
+                            .collect::<String>(),
+                    );
+                });
+            });
+
+        lineage.push(self.clone().into());
+
+        for child in self.children.iter_mut() {
+            child.draw(ui, offset, scale, layout_tree, lineage.clone());
+        }
+        let painter = ui.painter();
 
         let mut job = LayoutJob::default();
         job.append(
@@ -674,13 +708,13 @@ impl Node {
         let galley_c = galley.clone();
 
         let text_x =
-            (offset.x - (NODE_RADIUS * scale + galley.size().x)) - NODE_TEXT_PADDING * scale;
-        let text_y = offset.y - (galley.size().y / 2.);
+            (coords.x - (NODE_RADIUS * scale + galley.size().x)) - NODE_TEXT_PADDING * scale;
+        let text_y = coords.y - (galley.size().y / 2.);
 
         painter.galley(Pos2::new(text_x, text_y), galley, Color32::WHITE);
 
         let image_rect = Rect::from_center_size(
-            offset,
+            coords,
             (Vec2::splat(NODE_RADIUS * 2.) * scale) + Vec2::splat(1.0), // add one pixel to cover the whole background circle
         );
 
@@ -690,41 +724,8 @@ impl Node {
             self.window_is_open = !self.window_is_open;
         }
 
-        // let window_pos = offset + Vec2::new(NODE_RADIUS * 1.2, -(NODE_RADIUS / 2.)) * scale;
-
-        // egui::Window::new(self.id.to_string())
-        //     .id(egui::Id::new(self.id))
-        //     .max_width(150.)
-        //     .auto_sized()
-        //     .resizable(false)
-        //     .constrain(false)
-        //     .default_pos(window_pos)
-        //     .collapsible(false)
-        //     .title_bar(false)
-        //     .scroll(Vec2b::TRUE)
-        //     .enabled(true)
-        //     .open(&mut self.window_is_open)
-        //     .current_pos(window_pos)
-        //     .show(ui.ctx(), |ui| {
-        //         ui.with_layout(egui::Layout::top_down(Align::RIGHT), |ui| {
-        //             let lineage = lineage
-        //                 .iter()
-        //                 .rev()
-        //                 .map(|l| format!("{} ", l.name.clone()))
-        //                 .take(2)
-        //                 .collect::<String>();
-        //             ui.label(
-        //                 RESHAPER
-        //                     .reshape(format!("{} {}{}", self.name, lineage, self.last_name))
-        //                     .chars()
-        //                     .rev()
-        //                     .collect::<String>(),
-        //             );
-        //         });
-        //     });
-
         let painter = ui.painter();
-        painter.circle_filled(offset, NODE_RADIUS * scale, Color32::LIGHT_BLUE);
+        painter.circle_filled(coords, NODE_RADIUS * scale, Color32::LIGHT_BLUE);
 
         #[cfg(feature = "debug-ui")]
         painter.rect_stroke(image_rect, Rounding::ZERO, Stroke::new(2.0, Color32::GREEN));
@@ -735,7 +736,7 @@ impl Node {
 
         if response.hovered() {
             let painter = ui.painter();
-            painter.circle_stroke(offset, NODE_RADIUS * scale, stroke);
+            painter.circle_stroke(coords, NODE_RADIUS * scale, stroke);
         }
 
         #[cfg(feature = "debug-ui")]
@@ -747,103 +748,6 @@ impl Node {
             Rounding::ZERO,
             Stroke::new(1., Color32::GREEN),
         );
-
-        // let mut child_x = offset.x - ((self.children_shift() / 2.) * scale);
-        // let child_y = offset.y + ((NODE_RADIUS * 2. + NODE_PADDING) * scale);
-        // // draw lines
-        // for child in self.children.iter() {
-        //     let painter = ui.painter();
-
-        //     if child_x + NODE_RADIUS == offset.x {
-        //         painter.line_segment(
-        //             [Pos2::new(child_x + (NODE_RADIUS * scale), child_y), offset],
-        //             stroke,
-        //         );
-        //     } else {
-        //         let control_point1 = Pos2::new(offset.x, child_y - (NODE_PADDING * scale));
-
-        //         #[cfg(feature = "debug-ui")]
-        //         painter.circle_filled(control_point1, 10., Color32::WHITE);
-
-        //         let control_point2 = Pos2::new(
-        //             child_x + (NODE_RADIUS * scale),
-        //             offset.y + (NODE_PADDING * scale),
-        //         );
-
-        //         #[cfg(feature = "debug-ui")]
-        //         painter.circle_filled(control_point2, 10., Color32::YELLOW);
-
-        //         painter.add(Shape::CubicBezier(CubicBezierShape::from_points_stroke(
-        //             [
-        //                 Pos2::new(offset.x, offset.y + (NODE_RADIUS * scale)),
-        //                 control_point1,
-        //                 control_point2,
-        //                 Pos2::new(
-        //                     child_x + (NODE_RADIUS * scale),
-        //                     child_y - ((NODE_RADIUS / 2.) * scale),
-        //                 ),
-        //             ],
-        //             false,
-        //             Color32::TRANSPARENT,
-        //             stroke,
-        //         )));
-        //     }
-
-        //     let child_children_shift = child.children_shift();
-        //     child_x += ((child_children_shift + NODE_PADDING) * scale) + galley_c.size().x;
-        // }
-
-        // let mut child_x = offset.x - ((self.children_shift() / 2.) * scale);
-        // let node = self.clone();
-        // lineage.push(node.clone().into());
-        // // draw nodes
-        // for child in self.children.iter_mut() {
-        //     child.draw(
-        //         ui,
-        //         Pos2::new(child_x + (NODE_RADIUS * scale), child_y),
-        //         scale,
-        //         lineage.clone(),
-        //     );
-        //     let child_children_shift = child.children_shift();
-        //     child_x += ((child_children_shift + NODE_PADDING) * scale) + galley_c.size().x;
-        // }
-
-        // let painter = ui.painter();
-        // painter.circle_filled(offset, NODE_RADIUS * scale, Color32::LIGHT_BLUE);
-        // let image = egui::include_image!("../assets/yoda.png");
-        // let image_rect = Rect::from_center_size(
-        //     offset,
-        //     (Vec2::splat(NODE_RADIUS * 2.) * scale) + Vec2::splat(1.0), // add one pixel to cover the whole background circle
-        // );
-
-        // #[cfg(feature = "debug-ui")]
-        // painter.rect_stroke(image_rect, Rounding::ZERO, Stroke::new(2.0, Color32::GREEN));
-
-        // egui::Image::new(image)
-        //     .rounding(Rounding::same(NODE_RADIUS * 2.) * scale)
-        //     .paint_at(ui, image_rect);
-
-        // #[cfg(feature = "debug-ui")]
-        // painter.circle_stroke(
-        //     offset,
-        //     NODE_RADIUS * scale,
-        //     Stroke::new(1.0, Color32::GREEN),
-        // );
-
-        // if response.hovered() {
-        //     let painter = ui.painter();
-        //     painter.circle_stroke(offset, NODE_RADIUS * scale, stroke);
-        // }
-
-        // #[cfg(feature = "debug-ui")]
-        // painter.rect_stroke(
-        //     Rect {
-        //         min: Pos2::new(text_x, text_y),
-        //         max: Pos2::new(text_x + galley_c.size().x, text_y + galley_c.size().y),
-        //     },
-        //     Rounding::ZERO,
-        //     Stroke::new(1., Color32::GREEN),
-        // );
     }
 }
 

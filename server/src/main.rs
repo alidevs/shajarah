@@ -31,6 +31,7 @@ async fn main() {
                 .allow_origin([
                     "http://localhost:3001".parse::<HeaderValue>().unwrap(),
                     "http://localhost:9393".parse::<HeaderValue>().unwrap(),
+                    "http://192.168.0.132:3001".parse::<HeaderValue>().unwrap(),
                     "https://shajarah.bksalman.com"
                         .parse::<HeaderValue>()
                         .unwrap(),
@@ -39,7 +40,7 @@ async fn main() {
         )
         .with_state(app_state);
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:8383").await.unwrap();
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:3030").await.unwrap();
 
     log::info!("listening on {}", listener.local_addr().unwrap());
 

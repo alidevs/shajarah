@@ -44,6 +44,8 @@ pub struct MemberResponse {
     gender: Gender,
     birthday: Option<DateTime<Utc>>,
     last_name: String,
+    father_id: Option<i32>,
+    mother_id: Option<i32>,
     children: Vec<MemberResponse>,
 }
 
@@ -61,6 +63,8 @@ impl MemberResponse {
                 gender: m.gender,
                 birthday: m.birthday,
                 last_name: m.last_name.clone(),
+                father_id: m.father_id,
+                mother_id: m.mother_id,
                 children: vec![],
             })
             .collect();
@@ -122,6 +126,8 @@ LEFT JOIN
         gender: root.gender,
         birthday: root.birthday,
         last_name: root.last_name.clone(),
+        father_id: None,
+        mother_id: None,
         children: Vec::new(),
     };
 
