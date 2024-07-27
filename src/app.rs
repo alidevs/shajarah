@@ -56,7 +56,12 @@ impl eframe::App for App {
 
         if let Ok(message) = self.message_receiver.try_recv() {
             match message {
-                Message::LoadedFamilyData(root_node) => self.tree.set_root(Some(root_node)),
+                Message::LoadedFamilyData(root_node) => {
+                    self.tree.set_root(Some(root_node));
+                    log::debug!("set the root");
+                    self.tree.layout_tree.layout();
+                    log::debug!("laid out the tree");
+                }
             }
         }
     }
