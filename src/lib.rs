@@ -55,7 +55,7 @@ fn load_family_data(sender: Sender<Message>) {
             match res.json::<Node>() {
                 Ok(node) => {
                     let _ = sender.send(Message::LoadedFamilyData(node));
-                    log::info!("Loaded family data successfully");
+                    log::info!("Received family data successfully");
                 }
                 Err(e) => {
                     log::error!("failed to fetch family data: {e}");
