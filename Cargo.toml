@@ -58,9 +58,9 @@ opt-level = 2
 
 [patch.crates-io]
 # this includes a fix/workaround for text inputs on iOS browsers
-eframe = { git = "https://github.com/bksalman/egui", branch = "fix-ios-canvas-focus" }
-egui = { git = "https://github.com/bksalman/egui", branch = "fix-ios-canvas-focus" }
-egui_extras = { git = "https://github.com/bksalman/egui", branch = "fix-ios-canvas-focus" }
+eframe = { git = "https://github.com/emilk/egui", rev = "64d5f94" }
+egui = { git = "https://github.com/emilk/egui", rev = "64d5f94" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "64d5f94" }
 
 # If you want to use the bleeding edge version of egui and eframe:
 # egui = { git = "https://github.com/emilk/egui", branch = "master" }

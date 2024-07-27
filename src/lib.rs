@@ -3,7 +3,7 @@
 mod app;
 mod tree;
 mod zoom;
-use std::{sync::mpsc::Sender, time::Duration};
+use std::sync::mpsc::Sender;
 
 pub use app::App;
 use serde::{Deserialize, Serialize};
