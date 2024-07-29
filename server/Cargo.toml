@@ -5,13 +5,21 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.86"
+argon2 = { version = "0.5.3", features = ["std"] }
+async-trait = "0.1.81"
 axum = { version = "0.7.5", features = ["macros"] }
 chrono = { version = "0.4.38", features = ["serde"] }
 dotenvy = "0.15.7"
 env_logger = "0.11.4"
 log = "0.4.22"
+rand = "0.8.5"
 serde = { version = "1.0.204", features = ["derive"] }
 serde_json = "1.0.120"
-sqlx = { version = "0.8", features = [ "runtime-tokio", "tls-rustls", "postgres", "chrono" ] }
+sqlx = { version = "0.8", features = [ "runtime-tokio", "tls-rustls", "postgres", "chrono", "uuid" ] }
+thiserror = "1.0.63"
+time = "0.3.36"
 tokio = { version = "1.38.1", features = ["full"] }
+toml = "0.8.16"
+tower-cookies = { version = "0.10.0", features = ["private"] }
 tower-http = { version = "0.5.0", features = ["cors"] }
+uuid = { version = "1.10.0", features = ["serde", "v4"] }

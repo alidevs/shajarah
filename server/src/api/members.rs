@@ -5,7 +5,7 @@ use axum::{extract::State, Json};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use crate::{AppError, AppState, Gender};
+use crate::{AppError, Gender, InnerAppState};
 
 #[derive(Deserialize, Serialize)]
 pub struct NewMember {
@@ -77,7 +77,7 @@ impl MemberResponse {
 /// Get family members
 #[axum::debug_handler]
 pub async fn get_members(
-    State(state): State<Arc<AppState>>,
+    State(state): State<Arc<InnerAppState>>,
 ) -> anyhow::Result<Json<MemberResponse>, AppError> {
     let recs = sqlx::query_as!(
         MemberRow,
@@ -139,7 +139,7 @@ LEFT JOIN
 /// Add a family member
 #[axum::debug_handler]
 pub async fn add_member(
-    State(state): State<Arc<AppState>>,
+    State(state): State<Arc<InnerAppState>>,
     Json(member): Json<NewMember>,
 ) -> anyhow::Result<(), AppError> {
     let _rec = sqlx::query!(

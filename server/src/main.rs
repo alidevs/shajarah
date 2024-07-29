@@ -2,14 +2,22 @@ use std::sync::Arc;
 
 use axum::{
     http::{HeaderValue, Method},
-    routing::get,
+    routing::{get, post},
     Router,
 };
+use rand::Rng;
 use server::{
     api::members::{add_member, get_members},
-    AppState,
+    sessions::refresh_session,
+    users::routes::{login, logout, me},
+    AppState, Config, ConfigError, InnerAppState,
 };
+
+#[cfg(debug_assertions)]
+use server::users::routes::create_user;
+
 use sqlx::PgPool;
+use tower_cookies::{CookieManagerLayer, Key};
 use tower_http::cors::CorsLayer;
 
 #[tokio::main]
@@ -21,11 +29,54 @@ async fn main() {
         .await
         .unwrap();
 
-    let app_state = Arc::new(AppState { db_pool: pool });
+    let config = match Config::load_config() {
+        Ok(config) => config,
+        Err(err) => match &err {
+            ConfigError::IoError(err) if err.kind() == std::io::ErrorKind::NotFound => {
+                log::warn!("GENERATING CONFIG FILE WITH SECRET");
+
+                let mut secret = [0u8; 64];
+                rand::thread_rng().fill(&mut secret);
+
+                let secret = String::from_utf8_lossy(&secret).to_string();
+
+                let config = Config {
+                    cookie_secret: secret,
+                    ..Default::default()
+                };
+
+                let config_str =
+                    toml::to_string(&config).expect("Serialize config struct to toml string");
+
+                std::fs::write("config.toml", config_str)
+                    .expect("writing config toml string to config.toml");
+
+                config
+            }
+            _ => {
+                panic!("{:#?}", err);
+            }
+        },
+    };
+
+    let app_state = AppState {
+        inner: Arc::new(InnerAppState {
+            db_pool: pool,
+            cookies_secret: Key::from(config.cookie_secret.as_bytes()),
+        }),
+    };
 
     let app = Router::new()
         .route("/", get(|| async { "Hello, World!" }))
         .route("/api/members", get(get_members).post(add_member))
+        .route("/api/users/logout", get(logout))
+        .route("/api/users/login", post(login))
+        .route("/api/users/me", get(me));
+
+    #[cfg(debug_assertions)]
+    let app = app.route("/api/users", post(create_user));
+
+    let app = app
         .layer(
             CorsLayer::new()
                 .allow_origin([
@@ -38,6 +89,11 @@ async fn main() {
                 ])
                 .allow_methods([Method::GET]),
         )
+        .layer(axum::middleware::from_fn_with_state(
+            app_state.clone(),
+            refresh_session,
+        ))
+        .layer(CookieManagerLayer::new())
         .with_state(app_state);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3030").await.unwrap();

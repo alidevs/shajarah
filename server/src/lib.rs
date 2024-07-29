@@ -1,11 +1,54 @@
+use std::sync::Arc;
+
 use axum::{
+    extract::FromRef,
     http::StatusCode,
     response::{IntoResponse, Response},
 };
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+use tower_cookies::Key;
 
 pub mod api;
+pub mod auth;
+pub mod sessions;
+pub mod users;
+
+#[derive(Serialize, Deserialize, Debug, Default)]
+pub struct ErrorResponse {
+    pub error: String,
+    pub details: Option<Vec<String>>,
+}
+
+impl IntoResponse for ErrorResponse {
+    fn into_response(self) -> axum::response::Response {
+        serde_json::to_string(&self)
+            .expect("ErrorResponse as json")
+            .into_response()
+    }
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum ConfigError {
+    #[error(transparent)]
+    IoError(#[from] std::io::Error),
+
+    #[error(transparent)]
+    TomlError(#[from] toml::de::Error),
+}
+
+#[derive(Serialize, Deserialize, Default)]
+pub struct Config {
+    pub cookie_secret: String,
+}
+
+impl Config {
+    pub fn load_config() -> Result<Self, ConfigError> {
+        log::info!("getting config file");
+        let config_file = std::fs::read_to_string("config.toml")?;
+        toml::from_str::<Config>(&config_file).map_err(Into::into)
+    }
+}
 
 #[derive(Debug, Clone, Copy, sqlx::Type, Serialize, Deserialize)]
 #[sqlx(type_name = "gender")]
@@ -45,8 +88,14 @@ impl Node {
     }
 }
 
-pub struct AppState {
+pub struct InnerAppState {
     pub db_pool: PgPool,
+    pub cookies_secret: Key,
+}
+
+#[derive(Clone, FromRef)]
+pub struct AppState {
+    pub inner: Arc<InnerAppState>,
 }
 
 pub struct AppError(anyhow::Error);
