@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS members
     gender gender NOT NULL,
     birthday TIMESTAMPTZ,
     last_name TEXT NOT NULL,
+    image BYTEA,
     mother_id INTEGER,
     father_id INTEGER,
 

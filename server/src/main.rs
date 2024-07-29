@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use axum::{
+    extract::DefaultBodyLimit,
     http::{HeaderValue, Method},
     routing::{get, post},
     Router,
@@ -18,7 +19,7 @@ use server::users::routes::create_user;
 
 use sqlx::PgPool;
 use tower_cookies::{CookieManagerLayer, Key};
-use tower_http::cors::CorsLayer;
+use tower_http::{cors::CorsLayer, limit::RequestBodyLimitLayer};
 
 #[tokio::main]
 async fn main() {
@@ -94,6 +95,8 @@ async fn main() {
             refresh_session,
         ))
         .layer(CookieManagerLayer::new())
+        .layer(DefaultBodyLimit::disable())
+        .layer(RequestBodyLimitLayer::new(25 * 1024 * 1024 /* 25mb */))
         .with_state(app_state);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3030").await.unwrap();
