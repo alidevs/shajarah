@@ -157,6 +157,18 @@ impl MemberResponse {
     }
 }
 
+/// non-recursive MemberResponse
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct MemberResponseBrief {
+    id: i32,
+    name: String,
+    gender: Gender,
+    birthday: Option<DateTime<Utc>>,
+    last_name: String,
+    father_id: Option<i32>,
+    mother_id: Option<i32>,
+}
+
 /// Get family members
 #[axum::debug_handler]
 pub async fn get_members(
@@ -217,6 +229,61 @@ LEFT JOIN
     root.add_all_children(&recs);
 
     Ok(Json(root))
+}
+
+/// Get family members as a flat vector
+#[axum::debug_handler]
+pub async fn get_members_flat(
+    State(state): State<Arc<InnerAppState>>,
+) -> anyhow::Result<Json<Vec<MemberResponseBrief>>, AppError> {
+    let recs = sqlx::query_as!(
+        MemberRow,
+        r#"
+SELECT
+    m.id,
+    m.name,
+    m.gender as "gender: Gender",
+    m.birthday,
+    m.last_name,
+    mother.id AS mother_id,
+    mother.name AS mother_name,
+    mother.gender AS "mother_gender: Gender",
+    mother.birthday AS mother_birthday,
+    mother.last_name AS mother_last_name,
+    father.id AS father_id,
+    father.name AS father_name,
+    father.gender AS "father_gender: Gender",
+    father.birthday AS father_birthday,
+    father.last_name AS father_last_name
+FROM
+    members m
+LEFT JOIN
+    members mother ON m.mother_id = mother.id
+LEFT JOIN
+    members father ON m.father_id = father.id;
+    "#,
+    )
+    .fetch_all(&state.db_pool)
+    .await?;
+
+    if recs.is_empty() {
+        return Err(anyhow!("no records").into());
+    }
+
+    let members = recs
+        .into_iter()
+        .map(|r| MemberResponseBrief {
+            id: r.id,
+            name: r.name,
+            gender: r.gender,
+            birthday: r.birthday,
+            last_name: r.last_name,
+            father_id: r.father_id,
+            mother_id: r.mother_id,
+        })
+        .collect();
+
+    Ok(Json(members))
 }
 
 /// Add a family member

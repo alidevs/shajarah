@@ -8,7 +8,7 @@ use axum::{
 };
 use rand::Rng;
 use server::{
-    api::members::{add_member, get_members},
+    api::members::{add_member, get_members, get_members_flat},
     sessions::refresh_session,
     users::routes::{login, logout, me},
     AppState, Config, ConfigError, InnerAppState,
@@ -70,6 +70,7 @@ async fn main() {
     let app = Router::new()
         .route("/", get(|| async { "Hello, World!" }))
         .route("/api/members", get(get_members).post(add_member))
+        .route("/api/members/flat", get(get_members_flat))
         .route("/api/users/logout", get(logout))
         .route("/api/users/login", post(login))
         .route("/api/users/me", get(me));
