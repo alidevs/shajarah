@@ -356,6 +356,16 @@ impl LayoutTree {
     pub fn get(&self, id: i32) -> Option<&LayoutNode> {
         self.0.iter().find(|n| n.id == id)
     }
+
+    pub fn total_width(&self) -> f32 {
+        self.0
+            .iter()
+            .fold(0.0, |acc, n| if n.x > acc { n.x } else { acc })
+            - self
+                .0
+                .iter()
+                .fold(0.0, |acc, n| if n.x < acc { n.x } else { acc })
+    }
 }
 
 impl std::ops::Index<usize> for LayoutTree {
@@ -450,11 +460,11 @@ impl TreeUi {
     }
 
     pub fn draw(&mut self, ui: &mut egui::Ui) {
+        ui.style_mut().zoom(self.scale);
+
         let bg_rect = ui.allocate_rect(ui.max_rect(), Sense::click_and_drag());
         let viewport = bg_rect.rect;
         ui.set_clip_rect(viewport);
-
-        ui.style_mut().zoom(self.scale);
 
         if bg_rect.dragged_by(PointerButton::Primary) {
             self.pan(bg_rect.drag_delta());
@@ -476,16 +486,20 @@ impl TreeUi {
 
         if let Some(root) = &mut self.root {
             if !self.centered {
-                if let Some(root) = self.layout_tree.root() {
-                    let root_coords = &self.layout_tree[root];
+                if let Some(layout_root) = self.layout_tree.root() {
+                    let root_coords = &self.layout_tree[layout_root];
                     let center = viewport.center().to_vec2();
-
-                    let shift = Vec2::new(center.x - root_coords.x, 0.);
+                    log::debug!("{center}");
 
                     #[cfg(feature = "debug-ui")]
                     log::debug!("root_coords: {root_coords:?}");
 
-                    self.offset = center - shift;
+                    self.offset = Vec2::new(
+                        (root_coords.x + (center.x - root_coords.x))
+                            - ((self.layout_tree.total_width() * 5.) / 2.)
+                            - NODE_RADIUS * 2.,
+                        center.y,
+                    );
                 }
                 self.centered = true;
             }
