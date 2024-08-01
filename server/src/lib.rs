@@ -11,6 +11,7 @@ use tower_cookies::Key;
 
 pub mod api;
 pub mod auth;
+pub mod pages;
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct ErrorResponse {

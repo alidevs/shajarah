@@ -23,6 +23,7 @@
             trunk
             cargo-watch
             sqlx-cli
+            vscode-langservers-extracted
           ];
 
           buildInputs = [

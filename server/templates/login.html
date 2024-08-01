@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+
+<head>
+  <title>Login</title>
+</head>
+
+<body>
+  <script>
+    async function login(ev) {
+      const emailElement = document.getElementById("email");
+      const passwordElement = document.getElementById("password");
+
+      const response = await fetch("/api/users/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({email: emailElement.value, password: passwordElement.value}),
+      });
+
+      if (response.status == 200) {
+        window.location.href = "/admin";
+      }
+    }
+  </script>
+  <div dir="rtl" class="main-container">
+    <div dir="rtl">
+      <label for="email">البريد:</label>
+      <input id="email" type="text" />
+    </div>
+    <div dir="rtl">
+      <label for="password">كلمة المرور:</label>
+      <input id="password" type="password" />
+    </div>
+    <button onclick="login()">تسجيل الدخول</button>
+  </div>
+</body>
+
+</html>

@@ -13,6 +13,7 @@ use server::{
         sessions::refresh_session,
         users::routes::{login, logout, me},
     },
+    pages::{admin_page, login_page},
     AppState, Config, ConfigError, InnerAppState,
 };
 
@@ -70,7 +71,8 @@ async fn main() {
     };
 
     let app = Router::new()
-        .route("/", get(|| async { "Hello, World!" }))
+        .route("/admin", get(admin_page))
+        .route("/login", get(login_page))
         .route(
             "/api/members",
             get(get_members)
