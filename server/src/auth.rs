@@ -4,8 +4,10 @@ use chrono::Utc;
 use uuid::Uuid;
 
 use crate::{
-    sessions::UserSession,
-    users::models::{UserResponseBrief, UserRole},
+    api::{
+        sessions::{SessionError, UserSession},
+        users::models::{UserResponseBrief, UserRole},
+    },
     AppState, ErrorResponse,
 };
 
@@ -28,7 +30,7 @@ pub enum AuthError {
     InvalidSession,
 
     #[error("invalid session")]
-    SessionError(#[from] crate::sessions::SessionError),
+    SessionError(#[from] SessionError),
 }
 
 impl IntoResponse for AuthError {

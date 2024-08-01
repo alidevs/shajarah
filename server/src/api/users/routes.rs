@@ -11,12 +11,12 @@ use axum::{extract::State, Json};
 use tower_cookies::Cookies;
 
 use crate::{
-    auth::AuthExtractor,
-    sessions::{models::CreateSession, SESSION_COOKIE_NAME},
-    users::{
+    api::sessions::{models::CreateSession, SESSION_COOKIE_NAME},
+    api::users::{
         models::{CreateUser, UserLogin, UserResponse, UserResponseBrief, UserRole},
         UsersError,
     },
+    auth::AuthExtractor,
     InnerAppState,
 };
 

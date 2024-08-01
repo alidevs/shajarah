@@ -8,14 +8,16 @@ use axum::{
 };
 use rand::Rng;
 use server::{
-    api::members::{add_member, get_members, get_members_flat},
-    sessions::refresh_session,
-    users::routes::{login, logout, me},
+    api::{
+        members::routes::{add_member, delete_member, edit_member, get_members, get_members_flat},
+        sessions::refresh_session,
+        users::routes::{login, logout, me},
+    },
     AppState, Config, ConfigError, InnerAppState,
 };
 
 #[cfg(debug_assertions)]
-use server::users::routes::create_user;
+use server::api::users::routes::create_user;
 
 use sqlx::PgPool;
 use tower_cookies::{CookieManagerLayer, Key};
@@ -69,7 +71,13 @@ async fn main() {
 
     let app = Router::new()
         .route("/", get(|| async { "Hello, World!" }))
-        .route("/api/members", get(get_members).post(add_member))
+        .route(
+            "/api/members",
+            get(get_members)
+                .post(add_member)
+                .put(edit_member)
+                .delete(delete_member),
+        )
         .route("/api/members/flat", get(get_members_flat))
         .route("/api/users/logout", get(logout))
         .route("/api/users/login", post(login))
