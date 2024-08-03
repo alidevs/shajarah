@@ -3,7 +3,7 @@ use std::sync::Arc;
 use axum::{
     extract::DefaultBodyLimit,
     http::{HeaderValue, Method},
-    routing::{get, post},
+    routing::{get, post, put},
     Router,
 };
 use rand::Rng;
@@ -73,13 +73,8 @@ async fn main() {
     let app = Router::new()
         .route("/admin", get(admin_page))
         .route("/login", get(login_page))
-        .route(
-            "/api/members",
-            get(get_members)
-                .post(add_member)
-                .put(edit_member)
-                .delete(delete_member),
-        )
+        .route("/api/members", get(get_members).post(add_member))
+        .route("/api/members/:id", put(edit_member).delete(delete_member))
         .route("/api/members/flat", get(get_members_flat))
         .route("/api/users/logout", get(logout))
         .route("/api/users/login", post(login))

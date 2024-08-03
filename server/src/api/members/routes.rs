@@ -1,16 +1,16 @@
 use std::sync::Arc;
 
 use axum::{
-    extract::{Multipart, State},
+    extract::{Multipart, Path, State},
     Json,
 };
-use chrono::DateTime;
+use chrono::{DateTime, NaiveDate, NaiveTime};
 
 use crate::{api::users::models::UserRole, auth::AuthExtractor, Gender, InnerAppState};
 
 use super::{
-    CreateMemberBuilder, DeleteMember, MemberResponse, MemberResponseBrief, MemberRow,
-    MembersError, UpdateMemberBuilder,
+    CreateMemberBuilder, MemberResponse, MemberResponseBrief, MemberRow, MembersError,
+    UpdateMemberBuilder,
 };
 
 const FIELDS_LIMIT: i32 = 10;
@@ -147,12 +147,22 @@ pub async fn add_member(
                 let Ok(name) = field.text().await else {
                     return Err(MembersError::InvalidValue(String::from("name")));
                 };
+
+                if name.is_empty() {
+                    return Err(MembersError::InvalidValue(String::from("name")));
+                }
+
                 create_member_builder.name(name);
             }
             Some("last_name") => {
                 let Ok(last_name) = field.text().await else {
                     return Err(MembersError::InvalidValue(String::from("last_name")));
                 };
+
+                if last_name.is_empty() {
+                    return Err(MembersError::InvalidValue(String::from("last_name")));
+                }
+
                 create_member_builder.last_name(last_name);
             }
             Some("gender") => {
@@ -171,15 +181,26 @@ pub async fn add_member(
                 let Ok(birthday) = field.text().await else {
                     return Err(MembersError::InvalidValue(String::from("birthday")));
                 };
-                let birthday = DateTime::parse_from_rfc2822(&birthday)
-                    .or(DateTime::parse_from_rfc3339(&birthday))
-                    .map_err(|_e| MembersError::InvalidValue(String::from("birthday")))?;
-                create_member_builder.birthday(birthday.to_utc());
+                log::debug!("birthday value: {birthday:?}");
+                let birthday = NaiveDate::parse_from_str(&birthday, "%Y-%m-%d")
+                    .map_err(|e| {
+                        log::error!("birthday error: {e}");
+                        MembersError::InvalidValue(String::from("birthday"))
+                    })?
+                    .and_time(
+                        NaiveTime::from_hms_opt(0, 0, 1).expect("00:00:01 should be a valid time"),
+                    )
+                    .and_utc();
+                create_member_builder.birthday(birthday);
             }
             Some("father_id") => {
                 let Ok(father_id) = field.text().await else {
                     return Err(MembersError::InvalidValue(String::from("father_id")));
                 };
+                if father_id.is_empty() {
+                    continue;
+                }
+
                 create_member_builder.father_id(
                     father_id
                         .parse()
@@ -190,6 +211,10 @@ pub async fn add_member(
                 let Ok(mother_id) = field.text().await else {
                     return Err(MembersError::InvalidValue(String::from("mother_id")));
                 };
+                if mother_id.is_empty() {
+                    continue;
+                }
+
                 create_member_builder.mother_id(
                     mother_id
                         .parse()
@@ -203,6 +228,10 @@ pub async fn add_member(
                             let Ok(image) = field.bytes().await else {
                                 return Err(MembersError::InvalidValue(String::from("image")));
                             };
+                            if image.is_empty() {
+                                return Err(MembersError::InvalidValue(String::from("image")));
+                            }
+
                             create_member_builder.image(image.to_vec());
                         }
                         _ => {
@@ -251,6 +280,7 @@ pub async fn add_member(
 pub async fn edit_member(
     _auth: AuthExtractor<{ UserRole::Admin as u8 }>,
     State(state): State<Arc<InnerAppState>>,
+    Path(id): Path<i32>,
     mut multipart: Multipart,
 ) -> anyhow::Result<(), MembersError> {
     let mut limit = FIELDS_LIMIT;
@@ -258,14 +288,6 @@ pub async fn edit_member(
 
     while let Some(field) = multipart.next_field().await.unwrap() {
         match field.name() {
-            Some("id") => {
-                let Ok(id) = field.text().await else {
-                    return Err(MembersError::InvalidValue(String::from("id")));
-                };
-                update_member_builder.id(id
-                    .parse::<i32>()
-                    .map_err(|_e| MembersError::InvalidValue(String::from("id")))?);
-            }
             Some("name") => {
                 let Ok(name) = field.text().await else {
                     return Err(MembersError::InvalidValue(String::from("name")));
@@ -350,7 +372,7 @@ pub async fn edit_member(
         }
     }
 
-    let update_member = update_member_builder.build()?;
+    let update_member = update_member_builder.build(id)?;
 
     let mut tx = state.db_pool.begin().await?;
 
@@ -361,7 +383,7 @@ pub async fn edit_member(
     SET name = $2
     WHERE id = $1
             "#,
-            update_member.id,
+            id,
             name,
         )
         .execute(&mut *tx)
@@ -378,7 +400,7 @@ UPDATE members
 SET last_name = $1::TEXT
 WHERE id = $2::INTEGER"#,
             last_name,
-            update_member.id,
+            id,
         )
         .execute(&mut *tx)
         .await?;
@@ -391,7 +413,7 @@ WHERE id = $2::INTEGER"#,
     SET birthday = $2
     WHERE id = $1
             "#,
-            update_member.id,
+            id,
             birthday,
         )
         .execute(&mut *tx)
@@ -406,7 +428,7 @@ WHERE id = $2::INTEGER"#,
     WHERE id = $1
     RETURNING gender as "gender: Gender"
             "#,
-            update_member.id,
+            id,
             gender as _,
         )
         .fetch_one(&mut *tx)
@@ -420,7 +442,7 @@ WHERE id = $2::INTEGER"#,
     SET mother_id = $2
     WHERE id = $1
             "#,
-            update_member.id,
+            id,
             mother_id,
         )
         .execute(&mut *tx)
@@ -434,7 +456,7 @@ WHERE id = $2::INTEGER"#,
     SET father_id = $2
     WHERE id = $1
             "#,
-            update_member.id,
+            id,
             father_id,
         )
         .execute(&mut *tx)
@@ -465,12 +487,12 @@ WHERE id = $2::INTEGER"#,
 pub async fn delete_member(
     _auth: AuthExtractor<{ UserRole::Admin as u8 }>,
     State(state): State<Arc<InnerAppState>>,
-    delete_member: Json<DeleteMember>,
+    Path(id): Path<i32>,
 ) -> anyhow::Result<(), MembersError> {
     sqlx::query!(
         r#"
 DELETE FROM members WHERE id = $1"#,
-        delete_member.id,
+        id,
     )
     .execute(&state.db_pool)
     .await?;

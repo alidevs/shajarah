@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+
+<head>
+  <title>Login</title>
+</head>
+
+<body>
+  <style>
+    td,
+    th {
+      border: 1px solid #dddddd;
+      text-align: left;
+      padding: 8px;
+    }
+
+    tr:nth-child(even) {
+      background-color: #dddddd;
+    }
+
+    #new-member-form {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      width: 16rem;
+    }
+
+    #new-member-form>* {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
+  <div dir="rtl" class="main-container">
+    <button onclick="logout()">تسجيل الخروج</button>
+    <div>اهلا، {{ name }}!</div>
+
+    <form id="new-member-form" enctype="multipart/form-data" action="#" method="post">
+      <div>
+        <label for="new-member-name">الاسم:</label>
+        <input id="new-member-name" type="text" name="name" />
+      </div>
+      <div>
+        <label for="new-member-last-name">الاسم الاخير:</label>
+        <input id="new-member-last-name" type="text" name="last_name" />
+      </div>
+      <div>
+        <label for="new-member-gender">الجنس:</label>
+        <select id="new-member-gender" name="gender">
+          <option selected value> -- اختر الجنس -- </option>
+          <option value="male">ذكر</option>
+          <option value="female">انثى</option>
+        </select>
+      </div>
+      <div>
+        <label for="new-member-gender">تاريخ الولادة:</label>
+        <input id="new-member-birthday" type="date" name="birthday" />
+      </div>
+      <div>
+        <label for="new-member-mother-id">معرف الام:</label>
+        <select id="new-member-mother-id" name="mother_id">
+          <option selected value> -- اختر المعرف -- </option>
+          {% for member in members %}
+          {% if member.gender == "female" %}
+          <option value={{member.id}}>{{ member.id }} {{ member.name }}</option>
+          {% endif %}
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="new-member-mother-id">معرف الاب:</label>
+        <select id="new-member-father-id" name="father_id">
+          <option selected value> -- اختر المعرف -- </option>
+          {% for member in members %}
+          {% if member.gender == "male" %}
+          <option value={{member.id}}>{{ member.id }} {{ member.name }}</option>
+          {% endif %}
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="new-member-image">الصورة:</label>
+        <input id="new-member-image" type="file" name="image" />
+      </div>
+      <button type="submit" name="submit">إضافة عضو</button>
+    </form>
+
+    <table>
+      <tr>
+        <th>المعرف</th>
+        <th>الاسم</th>
+        <th>الاسم الاخير</th>
+        <th>الجنس</th>
+        <th>تاريخ الولادة</th>
+        <th>معرف الاب</th>
+        <th>معرف الام</th>
+        <th></th>
+        <th></th>
+      </tr>
+      {% for member in members %}
+      <tr>
+        <td>{{ member.id|e }}</td>
+        <td>{{ member.name|e }}</td>
+        <td>{{ member.last_name|e }}</td>
+        {% if member.gender == "male" %}
+        <td>ذكر</td>
+        {% else if member.gender == "female" %}
+        <td>انثى</td>
+        {% endif %}
+        {% match member.birthday %}
+        {% when Some with (birthday) %}
+        <td>{{ birthday|e }}</td>
+        {% when None %}
+        <td>NULL</td>
+        {% endmatch %}
+        {% match member.father_id %}
+        {% when Some with (father_id) %}
+        <td>{{ father_id|e }}</td>
+        {% when None %}
+        <td>NULL</td>
+        {% endmatch %}
+        {% match member.mother_id %}
+        {% when Some with (mother_id) %}
+        <td>{{ mother_id|e }}</td>
+        {% when None %}
+        <td>NULL</td>
+        {% endmatch %}
+        <td><button onclick="delete_member({{ member.id }})">حذف</button></td>
+        <td>
+          <button onclick="edit_member(this, {{ member.id }})">تعديل</button>
+
+          <form class="hidden" id="edit-member-form-{{ member.id }}" enctype="multipart/form-data" action="#"
+            method="post">
+            <div>
+              <label for="edit-member-name">الاسم:</label>
+              <input id="edit-member-name" type="text" name="name" value={{ member.name }} />
+            </div>
+            <div>
+              <label for="edit-member-last-name">الاسم الاخير:</label>
+              <input id="edit-member-last-name" type="text" name="last_name" value={{ member.last_name }} />
+            </div>
+            <div>
+              <label for="edit-member-gender">الجنس:</label>
+              <select id="edit-member-gender" name="gender">
+                {% if member.gender == "male" %}
+                <option selected value="male">ذكر</option>
+                <option value="female">انثى</option>
+                {% else if member.gender == "female" %}
+                <option value="male">ذكر</option>
+                <option selected value="female">انثى</option>
+                {% endif %}
+              </select>
+            </div>
+            <div>
+              <label for="edit-member-gender">تاريخ الولادة:</label>
+              {% match member.birthday %}
+              {% when Some with (birthday) %}
+              <input id="edit-member-birthday" type="date" name="birthday" value={{
+                birthday.format("%Y-%m-%d").to_string() }} />
+              {% when None %}
+              <input id="edit-member-birthday" type="date" name="birthday" />
+              {% endmatch %}
+            </div>
+            <div>
+              <label for="edit-member-mother-id">معرف الام:</label>
+              <select id="edit-member-mother-id" name="mother_id">
+                <option selected value> -- اختر المعرف -- </option>
+                {% for member in members %}
+                {% if member.gender == "female" %}
+                {% match member.mother_id %}
+                {% when Some with (mother_id) %}
+                {% if member.id == mother_id|deref_i32 %}
+                <option selected value={{member.id}}>{{ member.id }} {{ member.name }}</option>
+                {% endif %}
+                {% when None %}
+                <option value={{member.id}}>{{ member.id }} {{ member.name }}</option>
+                {% endmatch %}
+                {% endif %}
+                {% endfor %}
+              </select>
+            </div>
+            <div>
+              <label for="edit-member-mother-id">معرف الاب:</label>
+              <select id="edit-member-father-id" name="father_id">
+                <option selected value> -- اختر المعرف -- </option>
+                {% for member in members %}
+                {% if member.gender == "male" %}
+                {% match member.father_id %}
+                {% when Some with (father_id) %}
+                {% if member.id == father_id|deref_i32 %}
+                <option selected value={{member.id}}>{{ member.id }} {{ member.name }}</option>
+                {% endif %}
+                {% when None %}
+                <option value={{member.id}}>{{ member.id }} {{ member.name }}</option>
+                {% endmatch %}
+                {% endif %}
+                {% endfor %}
+              </select>
+            </div>
+            <div>
+              <label for="edit-member-image">الصورة:</label>
+              <input id="edit-member-image" type="file" name="image" />
+            </div>
+            <button type="submit" name="submit">إرسال التعديل</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+
+    <ul>
+    </ul>
+  </div>
+
+  <script>
+    async function logout() {
+      const response = await fetch("/api/users/logout");
+
+      if (response.status == 200) {
+        window.location.href = "/login";
+      }
+    }
+
+    const form = document.getElementById("new-member-form");
+
+    // Add new member
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      const form = e.currentTarget;
+
+      try {
+        const formData = new FormData(form);
+        const response = await fetch("/api/members", {
+          method: "POST",
+          body: formData
+        });
+
+        if (response.status === 200) {
+          location.reload();
+        } else {
+          const body = await response.json();
+          // TODO: show error more nicely;
+          // in an HTML element or something
+          alert(body.error);
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    async function delete_member(id) {
+      const response = await fetch(`/api/members/${id}`, {
+        method: "DELETE",
+      });
+
+      if (response.status === 200) {
+        location.reload();
+      }
+    }
+
+    async function edit_member(e, id, defaults) {
+      const formElement = document.getElementById(`edit-member-form-${id}`);
+      formElement.classList.toggle("hidden");
+      // const formData = new FormData(form);
+      // const response = await fetch(`/api/members/${id}`, {
+      //   method: "PUT",
+      //   body: formData,
+      // });
+
+      // if (response.status == 200) {
+      //   console.log("xd");
+      // }
+    }
+  </script>
+</body>
+
+</html>

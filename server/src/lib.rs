@@ -58,6 +58,27 @@ pub enum Gender {
     Female,
 }
 
+impl core::fmt::Display for Gender {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Gender::Male => write!(f, "male"),
+            Gender::Female => write!(f, "female"),
+        }
+    }
+}
+
+impl PartialEq<str> for Gender {
+    fn eq(&self, other: &str) -> bool {
+        self.to_string() == other
+    }
+}
+
+impl<'a> PartialEq<&'a str> for Gender {
+    fn eq(&self, other: &&'a str) -> bool {
+        self.to_string() == *other
+    }
+}
+
 pub type NodeId = usize;
 
 #[derive(Clone, Serialize, Deserialize)]

@@ -5,8 +5,47 @@
 </head>
 
 <body>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+    }
+
+    #form-container {
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
+
+    .field {
+      width: 14.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    input[type=text],
+    input[type=password] {
+      width: 10rem;
+    }
+  </style>
+
+  <div dir="rtl" id="form-container">
+    <div class="field" dir="rtl">
+      <label for="email">البريد:</label>
+      <input id="email" type="text" />
+    </div>
+    <div class="field" dir="rtl">
+      <label for="password">كلمة المرور:</label>
+      <input id="password" type="password" />
+    </div>
+    <button onclick="login()">تسجيل الدخول</button>
+  </div>
+
   <script>
-    async function login(ev) {
+    async function login() {
       const emailElement = document.getElementById("email");
       const passwordElement = document.getElementById("password");
 
@@ -22,18 +61,16 @@
         window.location.href = "/admin";
       }
     }
+
+    const form_container = document.getElementById("form-container");
+    for (const child of form_container.childNodes) {
+      child.addEventListener("keypress", function (e) {
+        if (e.key === "Enter") {
+          login();
+        }
+      });
+    }
   </script>
-  <div dir="rtl" class="main-container">
-    <div dir="rtl">
-      <label for="email">البريد:</label>
-      <input id="email" type="text" />
-    </div>
-    <div dir="rtl">
-      <label for="password">كلمة المرور:</label>
-      <input id="password" type="password" />
-    </div>
-    <button onclick="login()">تسجيل الدخول</button>
-  </div>
 </body>
 
 </html>

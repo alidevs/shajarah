@@ -48,37 +48,55 @@ impl IntoResponse for MembersError {
             MembersError::SomethingWentWrong => (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
             MembersError::Sqlx(_) => (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
             MembersError::AuthError(e) => e.into_response(),
-            MembersError::NoMembers => ErrorResponse {
-                error: self.to_string(),
-                details: None,
-            }
-            .into_response(),
-            MembersError::NoRootMember => ErrorResponse {
-                error: self.to_string(),
-                details: None,
-            }
-            .into_response(),
-            MembersError::InvalidValue(_) => ErrorResponse {
-                error: self.to_string(),
-                details: None,
-            }
-            .into_response(),
-            MembersError::InvalidImage => ErrorResponse {
-                error: self.to_string(),
-                details: None,
-            }
-            .into_response(),
-            MembersError::InvalidField(_) => ErrorResponse {
-                error: self.to_string(),
-                details: None,
-            }
-            .into_response(),
+            MembersError::NoMembers => (
+                StatusCode::NOT_FOUND,
+                ErrorResponse {
+                    error: self.to_string(),
+                    details: None,
+                },
+            )
+                .into_response(),
+            MembersError::NoRootMember => (
+                StatusCode::NOT_FOUND,
+                ErrorResponse {
+                    error: self.to_string(),
+                    details: None,
+                },
+            )
+                .into_response(),
+            MembersError::InvalidValue(_) => (
+                StatusCode::BAD_REQUEST,
+                ErrorResponse {
+                    error: self.to_string(),
+                    details: None,
+                },
+            )
+                .into_response(),
+            MembersError::InvalidImage => (
+                StatusCode::BAD_REQUEST,
+                ErrorResponse {
+                    error: self.to_string(),
+                    details: None,
+                },
+            )
+                .into_response(),
+            MembersError::InvalidField(_) => (
+                StatusCode::BAD_REQUEST,
+                ErrorResponse {
+                    error: self.to_string(),
+                    details: None,
+                },
+            )
+                .into_response(),
             MembersError::BadRequest => (StatusCode::BAD_REQUEST).into_response(),
-            MembersError::Anyhow(_) => ErrorResponse {
-                error: self.to_string(),
-                details: None,
-            }
-            .into_response(),
+            MembersError::Anyhow(_) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                ErrorResponse {
+                    error: self.to_string(),
+                    details: None,
+                },
+            )
+                .into_response(),
         }
     }
 }
@@ -185,7 +203,6 @@ pub struct UpdateMember {
 
 #[derive(Default)]
 pub struct UpdateMemberBuilder {
-    id: Option<i32>,
     name: Option<String>,
     last_name: Option<String>,
     gender: Option<Gender>,
@@ -200,11 +217,6 @@ impl UpdateMemberBuilder {
         Self {
             ..Default::default()
         }
-    }
-
-    fn id(&mut self, id: i32) -> &mut Self {
-        self.id = Some(id);
-        self
     }
 
     fn name(&mut self, name: String) -> &mut Self {
@@ -242,9 +254,7 @@ impl UpdateMemberBuilder {
         self
     }
 
-    fn build(self) -> anyhow::Result<UpdateMember> {
-        let id = self.id.ok_or(anyhow!("id field was not provided"))?;
-
+    fn build(self, id: i32) -> anyhow::Result<UpdateMember> {
         Ok(UpdateMember {
             id,
             name: self.name,
@@ -256,11 +266,6 @@ impl UpdateMemberBuilder {
             image: self.image,
         })
     }
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct DeleteMember {
-    id: i32,
 }
 
 #[allow(dead_code)]
@@ -323,11 +328,11 @@ impl MemberResponse {
 /// non-recursive MemberResponse
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct MemberResponseBrief {
-    id: i32,
-    name: String,
-    gender: Gender,
-    birthday: Option<DateTime<Utc>>,
-    last_name: String,
-    father_id: Option<i32>,
-    mother_id: Option<i32>,
+    pub id: i32,
+    pub name: String,
+    pub gender: Gender,
+    pub birthday: Option<DateTime<Utc>>,
+    pub last_name: String,
+    pub father_id: Option<i32>,
+    pub mother_id: Option<i32>,
 }
