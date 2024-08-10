@@ -2,9 +2,23 @@
 
 <head>
   <title>Login</title>
+  <script type="module">
+    import init, * as bindings from '/assets/shajarah.js';
+    const wasm = await init('/assets/shajarah_bg.wasm');
+
+
+    window.wasmBindings = bindings;
+
+
+    dispatchEvent(new CustomEvent("TrunkApplicationStarted", {detail: {wasm}}));
+
+  </script>
+  <link rel="modulepreload" href="/assets/shajarah.js" crossorigin=anonymous>
+  <link rel="preload" href="/assets/shajarah_bg.wasm" crossorigin=anonymous as="fetch" type="application/wasm">
 </head>
 
 <body>
+
   <style>
     td,
     th {
@@ -34,6 +48,10 @@
 
     .hidden {
       display: none;
+    }
+
+    canvas {
+      width: 100%;
     }
   </style>
   <div dir="rtl" class="main-container">
@@ -230,6 +248,7 @@
 
     <ul>
     </ul>
+    <canvas id="canvas"></canvas>
   </div>
 
   <script>

@@ -22,7 +22,7 @@ use server::api::users::routes::create_user;
 
 use sqlx::PgPool;
 use tower_cookies::{CookieManagerLayer, Key};
-use tower_http::{cors::CorsLayer, limit::RequestBodyLimitLayer};
+use tower_http::{cors::CorsLayer, limit::RequestBodyLimitLayer, services::ServeDir};
 
 #[tokio::main]
 async fn main() {
@@ -78,7 +78,8 @@ async fn main() {
         .route("/api/members/flat", get(get_members_flat))
         .route("/api/users/logout", get(logout))
         .route("/api/users/login", post(login))
-        .route("/api/users/me", get(me));
+        .route("/api/users/me", get(me))
+        .nest_service("/assets", ServeDir::new("assets"));
 
     #[cfg(debug_assertions)]
     let app = app.route("/api/users", post(create_user));
@@ -90,6 +91,7 @@ async fn main() {
                     "http://localhost:3001".parse::<HeaderValue>().unwrap(),
                     "http://localhost:9393".parse::<HeaderValue>().unwrap(),
                     "http://192.168.0.132:3001".parse::<HeaderValue>().unwrap(),
+                    "http://192.168.0.132:3030".parse::<HeaderValue>().unwrap(),
                     "https://shajarah.bksalman.com"
                         .parse::<HeaderValue>()
                         .unwrap(),

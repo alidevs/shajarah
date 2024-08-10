@@ -13,3 +13,5 @@ target_wasm
 .lycheecache
 .env
 server/config.toml
+server/assets/shajarah.js
+server/assets/shajarah_bg.wasm
