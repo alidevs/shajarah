@@ -581,6 +581,7 @@ pub struct Node {
     last_name: String,
     father_id: Option<i32>,
     mother_id: Option<i32>,
+    pub personal_info: Option<HashMap<String, String>>,
     pub children: Vec<Node>,
 
     /// used for displaying or hiding the member info window
@@ -692,6 +693,28 @@ impl Node {
                             .rev()
                             .collect::<String>(),
                     );
+                    if let Some(personal_info) = self.personal_info.as_ref() {
+                        ui.add_space(10.);
+                        ui.label(
+                            RESHAPER
+                                .reshape("المعلومات الشخصية:")
+                                .chars()
+                                .rev()
+                                .collect::<String>(),
+                        );
+                        for (key, value) in personal_info {
+                            ui.horizontal(|ui| {
+                                ui.label(
+                                    RESHAPER
+                                        .reshape(format!("{key}: "))
+                                        .chars()
+                                        .rev()
+                                        .collect::<String>(),
+                                );
+                                ui.label(RESHAPER.reshape(value).chars().rev().collect::<String>());
+                            });
+                        }
+                    }
                 });
             });
 

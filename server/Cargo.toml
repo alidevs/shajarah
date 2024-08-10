@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.86"
 argon2 = { version = "0.5.3", features = ["std"] }
-askama = { version = "0.12.1", features = ["with-axum"] }
+askama = { version = "0.12.1", features = ["with-axum", "serde-json"] }
 askama_axum = "0.4.0"
 async-trait = "0.1.81"
 axum = { version = "0.7.5", features = ["macros", "multipart"] }
@@ -16,7 +16,7 @@ env_logger = "0.11.4"
 log = "0.4.22"
 rand = "0.8.5"
 serde = { version = "1.0.204", features = ["derive"] }
-serde_json = "1.0.120"
+serde_json = { version = "1.0.120", features = ["raw_value"] }
 sqlx = { version = "0.8", features = [ "runtime-tokio", "tls-rustls", "postgres", "chrono", "uuid" ] }
 thiserror = "1.0.63"
 time = "0.3.36"

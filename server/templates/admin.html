@@ -3,8 +3,8 @@
 <head>
   <title>Login</title>
   <script type="module">
-    import init, * as bindings from '/assets/shajarah.js';
-    const wasm = await init('/assets/shajarah_bg.wasm');
+    import init, * as bindings from "/assets/shajarah.js";
+    const wasm = await init("/assets/shajarah_bg.wasm");
 
 
     window.wasmBindings = bindings;
@@ -102,6 +102,13 @@
           {% endfor %}
         </select>
       </div>
+      <div style="display: flex; flex-direction: column; align-items: start;">
+        <label for="new-member-info">معلومات شخصية:</label>
+        <div id="new-member-key-value-pairs">
+          <!-- Dynamic key-value pairs will be added here -->
+        </div>
+        <button type="button" id="new-member-add-pair-btn">+</button>
+      </div>
       <div>
         <label for="new-member-image">الصورة:</label>
         <input id="new-member-image" type="file" name="image" />
@@ -118,6 +125,7 @@
         <th>تاريخ الولادة</th>
         <th>معرف الاب</th>
         <th>معرف الام</th>
+        <th>معلومات شخصية</th>
         <th></th>
         <th></th>
       </tr>
@@ -146,6 +154,14 @@
         {% match member.mother_id %}
         {% when Some with (mother_id) %}
         <td>{{ mother_id|e }}</td>
+        {% when None %}
+        <td>NULL</td>
+        {% endmatch %}
+        {% match member.personal_info %}
+        {% when Some with (personal_info) %}
+        <td>
+          <pre><code>{{ personal_info|json|safe }}</code></pre>
+        </td>
         {% when None %}
         <td>NULL</td>
         {% endmatch %}
@@ -264,8 +280,28 @@
       e.preventDefault();
       const form = e.currentTarget;
 
+      const formData = new FormData();
+      form.querySelectorAll("input[name], select[name]").forEach((e) => {
+        formData.append(e.name, e.value);
+      });
+
+      const pairs = document.querySelectorAll(".new-member-pair");
+      const personalInfo = {};
+
+      pairs.forEach(pair => {
+        const key = pair.querySelector("input.json-key").value;
+        const value = pair.querySelector("input.json-value").value;
+
+        if (key) {
+          personalInfo[key] = value;
+        }
+      });
+
+      formData.append("info", JSON.stringify(personalInfo));
+
+      console.log(formData);
+
       try {
-        const formData = new FormData(form);
         const response = await fetch("/api/members", {
           method: "POST",
           body: formData
@@ -324,7 +360,33 @@
         location.reload();
       }
     }
-  </script>
+
+    const keyValuePairsDiv = document.getElementById("new-member-key-value-pairs");
+
+    document.getElementById("new-member-add-pair-btn").addEventListener("click", () => {
+      const pairDiv = document.createElement("div");
+      pairDiv.className = "new-member-pair";
+
+      const keyInput = document.createElement("input");
+      keyInput.type = "text";
+      keyInput.className = "json-key";
+      keyInput.placeholder = "مثال: المهنة";
+
+      const valueInput = document.createElement("input");
+      valueInput.type = "text";
+      valueInput.className = "json-value";
+      valueInput.placeholder = "مثال: محامي";
+
+      const removeBtn = document.createElement("button");
+      removeBtn.textContent = "x";
+      removeBtn.onclick = () => pairDiv.remove();
+
+      pairDiv.appendChild(keyInput);
+      pairDiv.appendChild(valueInput);
+      pairDiv.appendChild(removeBtn);
+
+      keyValuePairsDiv.appendChild(pairDiv);
+    });
   </script>
 </body>
 

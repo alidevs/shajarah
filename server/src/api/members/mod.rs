@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use anyhow::anyhow;
 use axum::{http::StatusCode, response::IntoResponse};
 use chrono::{DateTime, Utc};
@@ -110,6 +112,9 @@ pub struct CreateMember {
     mother_id: Option<i32>,
     father_id: Option<i32>,
     image: Option<Vec<u8>>,
+    /// Generic info about family member
+    /// a HashMap is used to make it dynamic and hold any kind of personal information
+    info: Option<HashMap<String, serde_json::Value>>,
 }
 
 #[derive(Default)]
@@ -121,6 +126,7 @@ pub struct CreateMemberBuilder {
     mother_id: Option<i32>,
     father_id: Option<i32>,
     image: Option<Vec<u8>>,
+    info: Option<HashMap<String, serde_json::Value>>,
 }
 
 impl CreateMemberBuilder {
@@ -165,6 +171,11 @@ impl CreateMemberBuilder {
         self
     }
 
+    fn info(&mut self, info: HashMap<String, serde_json::Value>) -> &mut Self {
+        self.info = Some(info);
+        self
+    }
+
     fn build(self) -> anyhow::Result<CreateMember> {
         let name = self.name.ok_or(anyhow!("name field was not provided"))?;
         let last_name = self
@@ -185,6 +196,7 @@ impl CreateMemberBuilder {
             mother_id: self.mother_id,
             father_id: self.father_id,
             image: self.image,
+            info: self.info,
         })
     }
 }
@@ -198,6 +210,7 @@ pub struct UpdateMember {
     birthday: Option<chrono::DateTime<chrono::Utc>>,
     mother_id: Option<i32>,
     father_id: Option<i32>,
+    info: Option<HashMap<String, serde_json::Value>>,
     image: Option<Vec<u8>>,
 }
 
@@ -208,7 +221,11 @@ pub struct UpdateMemberBuilder {
     gender: Option<Gender>,
     birthday: Option<chrono::DateTime<chrono::Utc>>,
     mother_id: Option<i32>,
+    remove_mother_id: bool,
     father_id: Option<i32>,
+    remove_father_id: bool,
+    info: Option<HashMap<String, serde_json::Value>>,
+    remove_info: bool,
     image: Option<Vec<u8>>,
 }
 
@@ -244,8 +261,28 @@ impl UpdateMemberBuilder {
         self
     }
 
+    fn remove_mother_id(&mut self, remove: bool) -> &mut Self {
+        self.remove_mother_id = remove;
+        self
+    }
+
     fn father_id(&mut self, father_id: i32) -> &mut Self {
         self.father_id = Some(father_id);
+        self
+    }
+
+    fn remove_father_id(&mut self, remove: bool) -> &mut Self {
+        self.remove_father_id = remove;
+        self
+    }
+
+    fn remove_info(&mut self, remove: bool) -> &mut Self {
+        self.remove_info = remove;
+        self
+    }
+
+    fn info(&mut self, info: HashMap<String, serde_json::Value>) -> &mut Self {
+        self.info = Some(info);
         self
     }
 
@@ -264,6 +301,7 @@ impl UpdateMemberBuilder {
             mother_id: self.mother_id,
             father_id: self.father_id,
             image: self.image,
+            info: self.info,
         })
     }
 }
@@ -276,6 +314,7 @@ struct MemberRow {
     gender: Gender,
     birthday: Option<chrono::DateTime<chrono::Utc>>,
     last_name: String,
+    personal_info: Option<serde_json::Value>,
     mother_id: Option<i32>,
     mother_name: Option<String>,
     mother_gender: Option<Gender>,
@@ -297,6 +336,7 @@ pub struct MemberResponse {
     last_name: String,
     father_id: Option<i32>,
     mother_id: Option<i32>,
+    pub personal_info: Option<serde_json::Map<String, serde_json::Value>>,
     children: Vec<MemberResponse>,
 }
 
@@ -316,6 +356,10 @@ impl MemberResponse {
                 last_name: m.last_name.clone(),
                 father_id: m.father_id,
                 mother_id: m.mother_id,
+                personal_info: m
+                    .personal_info
+                    .as_ref()
+                    .and_then(|p| p.as_object().cloned()),
                 children: vec![],
             })
             .collect();
@@ -335,4 +379,5 @@ pub struct MemberResponseBrief {
     pub last_name: String,
     pub father_id: Option<i32>,
     pub mother_id: Option<i32>,
+    pub personal_info: Option<serde_json::Map<String, serde_json::Value>>,
 }

@@ -5,6 +5,7 @@ use axum::{
     Json,
 };
 use chrono::{DateTime, NaiveDate, NaiveTime};
+use serde::Deserialize;
 
 use crate::{api::users::models::UserRole, auth::AuthExtractor, Gender, InnerAppState};
 
@@ -29,6 +30,7 @@ SELECT
     m.gender as "gender: Gender",
     m.birthday,
     m.last_name,
+    m.personal_info,
     mother.id AS mother_id,
     mother.name AS mother_name,
     mother.gender AS "mother_gender: Gender",
@@ -69,6 +71,10 @@ LEFT JOIN
         last_name: root.last_name.clone(),
         father_id: None,
         mother_id: None,
+        personal_info: root
+            .personal_info
+            .as_ref()
+            .and_then(|p| p.as_object().cloned()),
         children: Vec::new(),
     };
 
@@ -91,6 +97,7 @@ SELECT
     m.gender as "gender: Gender",
     m.birthday,
     m.last_name,
+    m.personal_info,
     mother.id AS mother_id,
     mother.name AS mother_name,
     mother.gender AS "mother_gender: Gender",
@@ -126,6 +133,7 @@ LEFT JOIN
             last_name: r.last_name,
             father_id: r.father_id,
             mother_id: r.mother_id,
+            personal_info: r.personal_info.and_then(|p| p.as_object().cloned()),
         })
         .collect();
 
@@ -181,7 +189,6 @@ pub async fn add_member(
                 let Ok(birthday) = field.text().await else {
                     return Err(MembersError::InvalidValue(String::from("birthday")));
                 };
-                log::debug!("birthday value: {birthday:?}");
                 let birthday = NaiveDate::parse_from_str(&birthday, "%Y-%m-%d")
                     .map_err(|e| {
                         log::error!("birthday error: {e}");
@@ -197,6 +204,7 @@ pub async fn add_member(
                 let Ok(father_id) = field.text().await else {
                     return Err(MembersError::InvalidValue(String::from("father_id")));
                 };
+
                 if father_id.is_empty() {
                     continue;
                 }
@@ -211,6 +219,7 @@ pub async fn add_member(
                 let Ok(mother_id) = field.text().await else {
                     return Err(MembersError::InvalidValue(String::from("mother_id")));
                 };
+
                 if mother_id.is_empty() {
                     continue;
                 }
@@ -228,19 +237,35 @@ pub async fn add_member(
                             let Ok(image) = field.bytes().await else {
                                 return Err(MembersError::InvalidValue(String::from("image")));
                             };
+
                             if image.is_empty() {
-                                return Err(MembersError::InvalidValue(String::from("image")));
+                                continue;
                             }
 
                             create_member_builder.image(image.to_vec());
                         }
-                        _ => {
+                        mime_type => {
+                            log::debug!("{mime_type}");
                             return Err(MembersError::InvalidImage);
                         }
                     }
                 } else {
-                    return Err(MembersError::InvalidImage);
+                    continue;
                 }
+            }
+            Some("info") => {
+                let Ok(info) = field.text().await else {
+                    return Err(MembersError::InvalidValue(String::from("info")));
+                };
+
+                if info.is_empty() {
+                    continue;
+                }
+
+                create_member_builder.info(
+                    serde_json::from_str(&info)
+                        .map_err(|_e| MembersError::InvalidValue(String::from("info")))?,
+                );
             }
             Some(field) => return Err(MembersError::InvalidField(field.to_string())),
             None => {
@@ -255,11 +280,17 @@ pub async fn add_member(
     }
 
     let create_member = create_member_builder.build()?;
+    let info = create_member.info.and_then(|info| {
+        sqlx::types::JsonValue::deserialize(serde::de::value::MapDeserializer::new(
+            info.into_iter(),
+        ))
+        .ok()
+    });
 
     let rec = sqlx::query!(
         r#"
-    INSERT INTO members (name, gender, birthday, last_name, father_id, mother_id, image)
-    VALUES ($1, $2, $3, $4, $5, $6, $7)
+    INSERT INTO members (name, gender, birthday, last_name, father_id, mother_id, image, personal_info)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
     RETURNING id, name, gender as "gender: Gender", birthday, mother_id, father_id, last_name
             "#,
         create_member.name,
@@ -269,6 +300,7 @@ pub async fn add_member(
         create_member.father_id,
         create_member.mother_id,
         create_member.image,
+        info,
     )
     .fetch_one(&state.db_pool)
     .await?;
@@ -325,6 +357,12 @@ pub async fn edit_member(
                 let Ok(father_id) = field.text().await else {
                     return Err(MembersError::InvalidValue(String::from("father_id")));
                 };
+
+                if father_id.is_empty() {
+                    update_member_builder.remove_father_id(true);
+                    continue;
+                }
+
                 update_member_builder.father_id(
                     father_id
                         .parse()
@@ -335,6 +373,12 @@ pub async fn edit_member(
                 let Ok(mother_id) = field.text().await else {
                     return Err(MembersError::InvalidValue(String::from("mother_id")));
                 };
+
+                if mother_id.is_empty() {
+                    update_member_builder.remove_mother_id(true);
+                    continue;
+                }
+
                 update_member_builder.mother_id(
                     mother_id
                         .parse()
@@ -358,6 +402,21 @@ pub async fn edit_member(
                     return Err(MembersError::InvalidImage);
                 }
             }
+            Some("info") => {
+                let Ok(info) = field.text().await else {
+                    return Err(MembersError::InvalidValue(String::from("info")));
+                };
+
+                if info.is_empty() {
+                    update_member_builder.remove_info(true);
+                    continue;
+                }
+
+                update_member_builder.info(
+                    serde_json::from_str(&info)
+                        .map_err(|_e| MembersError::InvalidValue(String::from("info")))?,
+                );
+            }
             Some(field) => {
                 return Err(MembersError::InvalidField(field.to_string()));
             }
@@ -372,6 +431,9 @@ pub async fn edit_member(
         }
     }
 
+    let remove_father_id = update_member_builder.remove_father_id;
+    let remove_mother_id = update_member_builder.remove_mother_id;
+    let remove_info = update_member_builder.remove_info;
     let update_member = update_member_builder.build(id)?;
 
     let mut tx = state.db_pool.begin().await?;
@@ -447,6 +509,17 @@ WHERE id = $2::INTEGER"#,
         )
         .execute(&mut *tx)
         .await?;
+    } else if remove_mother_id {
+        sqlx::query!(
+            r#"
+    UPDATE members
+    SET mother_id = NULL
+    WHERE id = $1
+            "#,
+            id,
+        )
+        .execute(&mut *tx)
+        .await?;
     }
 
     if let Some(father_id) = &update_member.father_id {
@@ -458,6 +531,47 @@ WHERE id = $2::INTEGER"#,
             "#,
             id,
             father_id,
+        )
+        .execute(&mut *tx)
+        .await?;
+    } else if remove_father_id {
+        sqlx::query!(
+            r#"
+    UPDATE members
+    SET father_id = NULL
+    WHERE id = $1
+            "#,
+            id,
+        )
+        .execute(&mut *tx)
+        .await?;
+    }
+
+    if let Some(info) = &update_member.info {
+        let info = sqlx::types::JsonValue::deserialize(serde::de::value::MapDeserializer::new(
+            info.clone().into_iter(),
+        ))
+        .unwrap();
+
+        sqlx::query!(
+            r#"
+    UPDATE members
+    SET personal_info = $2
+    WHERE id = $1
+            "#,
+            id,
+            info,
+        )
+        .execute(&mut *tx)
+        .await?;
+    } else if remove_info {
+        sqlx::query!(
+            r#"
+    UPDATE members
+    SET personal_info = NULL
+    WHERE id = $1
+            "#,
+            id,
         )
         .execute(&mut *tx)
         .await?;
