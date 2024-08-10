@@ -40,7 +40,8 @@
     <button onclick="logout()">تسجيل الخروج</button>
     <div>اهلا، {{ name }}!</div>
 
-    <form id="new-member-form" enctype="multipart/form-data" action="#" method="post">
+    <form autocomplete="off" id="new-member-form" enctype="multipart/form-data" action="#" method="post"
+      onsubmit="new_member(event)">
       <div>
         <label for="new-member-name">الاسم:</label>
         <input id="new-member-name" type="text" name="name" />
@@ -131,11 +132,11 @@
         <td>NULL</td>
         {% endmatch %}
         <td><button onclick="delete_member({{ member.id }})">حذف</button></td>
-        <td>
-          <button onclick="edit_member(this, {{ member.id }})">تعديل</button>
+        <td dir="rtl" style="text-align: right;">
+          <button onclick="toggle_edit_member_form(this, {{ member.id }})">تعديل</button>
 
-          <form class="hidden" id="edit-member-form-{{ member.id }}" enctype="multipart/form-data" action="#"
-            method="post">
+          <form autocomplete="off" onsubmit="edit_member(event, {{ member.id }})" class="hidden edit-member-form"
+            id="edit-member-form-{{ member.id }}" enctype="multipart/form-data" action="#" method="post">
             <div>
               <label for="edit-member-name">الاسم:</label>
               <input id="edit-member-name" type="text" name="name" value={{ member.name }} />
@@ -169,16 +170,23 @@
             <div>
               <label for="edit-member-mother-id">معرف الام:</label>
               <select id="edit-member-mother-id" name="mother_id">
+                {% if member.mother_id.is_none() %}
                 <option selected value> -- اختر المعرف -- </option>
-                {% for member in members %}
-                {% if member.gender == "female" %}
+                {% else %}
+                <option value> -- اختر المعرف -- </option>
+                {% endif %}
+
+                {% for other_member in members %}
+                {% if other_member.gender == "female" %}
                 {% match member.mother_id %}
                 {% when Some with (mother_id) %}
-                {% if member.id == mother_id|deref_i32 %}
-                <option selected value={{member.id}}>{{ member.id }} {{ member.name }}</option>
+                {% if other_member.id == mother_id|deref_i32 %}
+                <option selected value={{other_member.id}}>{{ other_member.id }} {{ other_member.name }}</option>
+                {% else if other_member.id != member.id %}
+                <option value={{other_member.id}}>{{ other_member.id }} {{ other_member.name }}</option>
                 {% endif %}
                 {% when None %}
-                <option value={{member.id}}>{{ member.id }} {{ member.name }}</option>
+                <option value={{other_member.id}}>{{ other_member.id }} {{ other_member.name }}</option>
                 {% endmatch %}
                 {% endif %}
                 {% endfor %}
@@ -187,16 +195,23 @@
             <div>
               <label for="edit-member-mother-id">معرف الاب:</label>
               <select id="edit-member-father-id" name="father_id">
+                {% if member.father_id.is_none() %}
                 <option selected value> -- اختر المعرف -- </option>
-                {% for member in members %}
-                {% if member.gender == "male" %}
+                {% else %}
+                <option value> -- اختر المعرف -- </option>
+                {% endif %}
+
+                {% for other_member in members %}
+                {% if other_member.gender == "male" %}
                 {% match member.father_id %}
                 {% when Some with (father_id) %}
-                {% if member.id == father_id|deref_i32 %}
-                <option selected value={{member.id}}>{{ member.id }} {{ member.name }}</option>
+                {% if other_member.id == father_id|deref_i32 %}
+                <option selected value={{other_member.id}}>{{ other_member.id }} {{ other_member.name }}</option>
+                {% else if other_member.id != member.id %}
+                <option value={{other_member.id}}>{{ other_member.id }} {{ other_member.name }}</option>
                 {% endif %}
                 {% when None %}
-                <option value={{member.id}}>{{ member.id }} {{ member.name }}</option>
+                <option value={{other_member.id}}>{{ other_member.id }} {{ other_member.name }}</option>
                 {% endmatch %}
                 {% endif %}
                 {% endfor %}
@@ -226,10 +241,7 @@
       }
     }
 
-    const form = document.getElementById("new-member-form");
-
-    // Add new member
-    form.onsubmit = async (e) => {
+    async function new_member(e) {
       e.preventDefault();
       const form = e.currentTarget;
 
@@ -263,19 +275,37 @@
       }
     }
 
-    async function edit_member(e, id, defaults) {
+    async function toggle_edit_member_form(e, id) {
       const formElement = document.getElementById(`edit-member-form-${id}`);
       formElement.classList.toggle("hidden");
-      // const formData = new FormData(form);
-      // const response = await fetch(`/api/members/${id}`, {
-      //   method: "PUT",
-      //   body: formData,
-      // });
-
-      // if (response.status == 200) {
-      //   console.log("xd");
-      // }
     }
+
+    document.querySelectorAll(".edit-member-form input, .edit-member-form select, .edit-member-form textarea").forEach((element) => {
+      element.addEventListener("change", (e) => {
+        e.currentTarget.classList.add("changed");
+      });
+    });
+
+    async function edit_member(e, id) {
+      e.preventDefault();
+      const formElement = e.currentTarget;
+
+      let formData = new FormData();
+
+      formElement.querySelectorAll(".changed").forEach((element) => {
+        formData.append(element.name, element.value);
+      });
+
+      const res = await fetch(`/api/members/${id}`, {
+        method: "PUT",
+        body: formData,
+      });
+
+      if (res.status === 200) {
+        location.reload();
+      }
+    }
+  </script>
   </script>
 </body>
 

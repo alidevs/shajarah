@@ -1,10 +1,11 @@
-use std::sync::mpsc::{self, Receiver};
+use std::sync::mpsc::{self, Receiver, Sender};
 
 use crate::{load_family_data, setup_fonts, tree::TreeUi, Message};
 
 pub struct App {
     tree: TreeUi,
     message_receiver: Receiver<Message>,
+    message_sender: Sender<Message>,
 }
 
 impl App {
@@ -22,6 +23,7 @@ impl App {
 
         Self {
             tree: TreeUi::new(None),
+            message_sender: sender.clone(),
             message_receiver: receiver,
         }
     }
@@ -47,6 +49,12 @@ impl eframe::App for App {
                 }
 
                 egui::widgets::global_dark_light_mode_buttons(ui);
+
+                let reload = ui.button("⟳").on_hover_text("Refresh tree");
+
+                if reload.clicked() {
+                    load_family_data(self.message_sender.clone(), ctx);
+                }
             });
         });
 
