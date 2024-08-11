@@ -703,25 +703,29 @@ impl Node {
                             .collect::<String>(),
                     );
                     if let Some(personal_info) = self.personal_info.as_ref() {
-                        ui.add_space(10.);
-                        ui.label(
-                            RESHAPER
-                                .reshape("المعلومات الشخصية:")
-                                .chars()
-                                .rev()
-                                .collect::<String>(),
-                        );
-                        for (key, value) in personal_info {
-                            ui.horizontal(|ui| {
-                                ui.label(
-                                    RESHAPER
-                                        .reshape(format!("{key}: "))
-                                        .chars()
-                                        .rev()
-                                        .collect::<String>(),
-                                );
-                                ui.label(RESHAPER.reshape(value).chars().rev().collect::<String>());
-                            });
+                        if !personal_info.is_empty() {
+                            ui.add_space(10.);
+                            ui.label(
+                                RESHAPER
+                                    .reshape("المعلومات الشخصية:")
+                                    .chars()
+                                    .rev()
+                                    .collect::<String>(),
+                            );
+                            for (key, value) in personal_info {
+                                ui.horizontal(|ui| {
+                                    ui.label(
+                                        RESHAPER
+                                            .reshape(format!("{key}: "))
+                                            .chars()
+                                            .rev()
+                                            .collect::<String>(),
+                                    );
+                                    ui.label(
+                                        RESHAPER.reshape(value).chars().rev().collect::<String>(),
+                                    );
+                                });
+                            }
                         }
                     }
                 });
