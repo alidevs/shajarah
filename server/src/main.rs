@@ -46,7 +46,6 @@ async fn main() {
 
                 let config = Config {
                     cookie_secret: secret,
-                    ..Default::default()
                 };
 
                 let config_str =

@@ -4,20 +4,20 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-anyhow = "1.0.86"
+anyhow = { workspace = true }
 argon2 = { version = "0.5.3", features = ["std"] }
 askama = { version = "0.12.1", features = ["with-axum", "serde-json"] }
 askama_axum = "0.4.0"
 async-trait = "0.1.81"
 axum = { version = "0.7.5", features = ["macros", "multipart"] }
-chrono = { version = "0.4.38", features = ["serde"] }
+chrono = { workspace = true }
 dotenvy = "0.15.7"
 env_logger = "0.11.4"
-indexmap = { version = "2.3.0", features = ["serde"] }
-log = "0.4.22"
+indexmap = { workspace = true }
+log = { workspace = true }
 rand = "0.8.5"
-serde = { version = "1.0.204", features = ["derive"] }
-serde_json = { version = "1.0.120", features = ["raw_value", "preserve_order"] }
+serde = { workspace = true }
+serde_json = { workspace = true, features = ["raw_value"] }
 sqlx = { version = "0.8", features = [ "runtime-tokio", "tls-rustls", "postgres", "chrono", "uuid" ] }
 thiserror = "1.0.63"
 time = "0.3.36"

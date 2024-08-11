@@ -69,13 +69,15 @@ impl core::fmt::Display for Gender {
 
 impl PartialEq<str> for Gender {
     fn eq(&self, other: &str) -> bool {
-        self.to_string() == other
+        (matches!(self, Gender::Male) && other == "male")
+            || (matches!(self, Gender::Female) && other == "female")
     }
 }
 
 impl<'a> PartialEq<&'a str> for Gender {
     fn eq(&self, other: &&'a str) -> bool {
-        self.to_string() == *other
+        (matches!(self, Gender::Male) && *other == "male")
+            || (matches!(self, Gender::Female) && *other == "female")
     }
 }
 

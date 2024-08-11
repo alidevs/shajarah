@@ -63,9 +63,9 @@ pub async fn admin_page(
         }
         Err(e) => match e {
             AuthError::InvalidSession | AuthError::SessionError(_) => {
-                return Ok(Redirect::to("/login").into_response());
+                Ok(Redirect::to("/login").into_response())
             }
-            e => return Err(e.into()),
+            e => Err(e.into()),
         },
     }
 }
