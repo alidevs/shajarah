@@ -470,6 +470,8 @@ impl TreeUi {
             self.pan(bg_rect.drag_delta());
         }
 
+        let background_clicked = bg_rect.clicked_by(PointerButton::Primary);
+
         if let Some(hover_pos) = ui.ctx().input(|i| i.pointer.hover_pos()) {
             if bg_rect.hovered() {
                 let zoom_delta = ui.ctx().input(|i| i.zoom_delta());
@@ -510,6 +512,7 @@ impl TreeUi {
                 self.scale,
                 &self.layout_tree,
                 vec![],
+                background_clicked,
             );
         }
     }
@@ -601,6 +604,7 @@ impl Node {
         scale: f32,
         layout_tree: &LayoutTree,
         mut lineage: Vec<SimpleNode>,
+        background_clicked: bool,
     ) {
         let stroke = ui.visuals().widgets.noninteractive.fg_stroke;
         let coords = layout_tree
@@ -665,6 +669,10 @@ impl Node {
 
         let window_pos = coords + Vec2::new(NODE_RADIUS * 1.2, -(NODE_RADIUS / 2.)) * scale;
 
+        if background_clicked && self.window_is_open {
+            self.window_is_open = false;
+        }
+
         egui::Window::new(self.id.to_string())
             .id(egui::Id::new(self.id))
             .max_width(150.)
@@ -721,7 +729,14 @@ impl Node {
         lineage.push(self.clone().into());
 
         for child in self.children.iter_mut() {
-            child.draw(ui, offset, scale, layout_tree, lineage.clone());
+            child.draw(
+                ui,
+                offset,
+                scale,
+                layout_tree,
+                lineage.clone(),
+                background_clicked,
+            );
         }
         let painter = ui.painter();
 
