@@ -2288,12 +2288,13 @@ checksum = "44feda355f4159a7c757171a77de25daf6411e217b4cabd03bd6650690468126"
 
 [[package]]
 name = "indexmap"
-version = "2.2.6"
+version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "168fb715dda47215e360912c096649d23d58bf392ac62f73919e831745e40f26"
+checksum = "de3fc2e30ba82dd1b3911c8de1ffc143c74a914a14e99514d7637e3099df5ea0"
 dependencies = [
  "equivalent",
  "hashbrown",
+ "serde",
 ]
 
 [[package]]
@@ -3683,6 +3684,7 @@ version = "1.0.120"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4e0d21c9a8cae1235ad58a00c11cb40d4b1e5c784f1ef2c537876ed6ffd8b7c5"
 dependencies = [
+ "indexmap",
  "itoa",
  "ryu",
  "serde",
@@ -3743,6 +3745,7 @@ dependencies = [
  "chrono",
  "dotenvy",
  "env_logger 0.11.5",
+ "indexmap",
  "log",
  "rand",
  "serde",
@@ -3792,6 +3795,7 @@ dependencies = [
  "ehttp",
  "env_logger 0.10.2",
  "image",
+ "indexmap",
  "lazy_static",
  "log",
  "serde",

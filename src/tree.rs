@@ -10,6 +10,7 @@ use egui::{
     epaint::CubicBezierShape, include_image, text::LayoutJob, Align, Color32, FontFamily, FontId,
     PointerButton, Pos2, Rect, Rounding, Sense, Shape, TextFormat, Vec2, Vec2b,
 };
+use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
 use crate::{zoom::Zoom, Gender};
@@ -584,7 +585,7 @@ pub struct Node {
     last_name: String,
     father_id: Option<i32>,
     mother_id: Option<i32>,
-    pub personal_info: Option<HashMap<String, String>>,
+    pub personal_info: Option<IndexMap<String, String>>,
     pub children: Vec<Node>,
 
     /// used for displaying or hiding the member info window

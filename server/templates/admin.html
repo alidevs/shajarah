@@ -252,6 +252,24 @@
               </select>
             </div>
             <div>
+              <label for="edit-member-info">المعلومات الشخصية:</label>
+              <div style="display: flex; flex-direction: column;" id="edit-member-key-value-pairs">
+                <!-- Dynamic key-value pairs will be added here -->
+                {% match member.personal_info %}
+                {% when Some with (personal_info) %}
+                {% for (key, value) in personal_info %}
+                <div class="edit-member-pair">
+                  <input class="json-key" value="{{key}}" />
+                  <input class="json-value" value="{{value}}" />
+                  <button type="button" id="edit-member-remove-pair-btn" onclick="removePair(this)">x</button>
+                </div>
+                {% endfor %}
+                {% when None %}
+                {% endmatch %}
+              </div>
+              <button type="button" id="edit-member-add-pair-btn">+</button>
+            </div>
+            <div>
               <label for="edit-member-image">الصورة:</label>
               <input id="edit-member-image" type="file" name="image" />
             </div>
@@ -278,14 +296,14 @@
 
     async function new_member(e) {
       e.preventDefault();
-      const form = e.currentTarget;
+      const formElement = e.currentTarget;
 
       const formData = new FormData();
-      form.querySelectorAll("input[name], select[name]").forEach((e) => {
+      formElement.querySelectorAll("input[name], select[name]").forEach((e) => {
         formData.append(e.name, e.value);
       });
 
-      const pairs = document.querySelectorAll(".new-member-pair");
+      const pairs = formElement.querySelectorAll(".new-member-pair");
       const personalInfo = {};
 
       pairs.forEach(pair => {
@@ -347,9 +365,23 @@
 
       let formData = new FormData();
 
-      formElement.querySelectorAll(".changed").forEach((element) => {
+      formElement.querySelectorAll("input[name].changed").forEach((element) => {
         formData.append(element.name, element.value);
       });
+
+      const pairs = formElement.querySelectorAll(".edit-member-pair");
+      const personalInfo = {};
+
+      pairs.forEach(pair => {
+        const key = pair.querySelector("input.json-key").value;
+        const value = pair.querySelector("input.json-value").value;
+
+        if (key) {
+          personalInfo[key] = value;
+        }
+      });
+
+      formData.append("info", JSON.stringify(personalInfo));
 
       const res = await fetch(`/api/members/${id}`, {
         method: "PUT",
@@ -361,7 +393,7 @@
       }
     }
 
-    const keyValuePairsDiv = document.getElementById("new-member-key-value-pairs");
+    const addMemberKeyValuePairsDiv = document.getElementById("new-member-key-value-pairs");
 
     document.getElementById("new-member-add-pair-btn").addEventListener("click", () => {
       const pairDiv = document.createElement("div");
@@ -385,8 +417,39 @@
       pairDiv.appendChild(valueInput);
       pairDiv.appendChild(removeBtn);
 
-      keyValuePairsDiv.appendChild(pairDiv);
+      addMemberKeyValuePairsDiv.appendChild(pairDiv);
     });
+
+    const editMemberKeyValuePairsDiv = document.getElementById("edit-member-key-value-pairs");
+
+    document.getElementById("edit-member-add-pair-btn").addEventListener("click", () => {
+      const pairDiv = document.createElement("div");
+      pairDiv.className = "edit-member-pair";
+
+      const keyInput = document.createElement("input");
+      keyInput.type = "text";
+      keyInput.className = "json-key";
+      keyInput.placeholder = "مثال: المهنة";
+
+      const valueInput = document.createElement("input");
+      valueInput.type = "text";
+      valueInput.className = "json-value";
+      valueInput.placeholder = "مثال: محامي";
+
+      const removeBtn = document.createElement("button");
+      removeBtn.textContent = "x";
+      removeBtn.onclick = () => pairDiv.remove();
+
+      pairDiv.appendChild(keyInput);
+      pairDiv.appendChild(valueInput);
+      pairDiv.appendChild(removeBtn);
+
+      editMemberKeyValuePairsDiv.appendChild(pairDiv);
+    });
+
+    function removePair(button) {
+      button.parentElement.remove();
+    }
   </script>
 </body>
 

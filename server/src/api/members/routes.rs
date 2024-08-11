@@ -5,6 +5,7 @@ use axum::{
     Json,
 };
 use chrono::{DateTime, NaiveDate, NaiveTime};
+use indexmap::IndexMap;
 use serde::Deserialize;
 
 use crate::{api::users::models::UserRole, auth::AuthExtractor, Gender, InnerAppState};
@@ -71,10 +72,14 @@ LEFT JOIN
         last_name: root.last_name.clone(),
         father_id: None,
         mother_id: None,
-        personal_info: root
-            .personal_info
-            .as_ref()
-            .and_then(|p| p.as_object().cloned()),
+        personal_info: root.personal_info.as_ref().and_then(|p| {
+            p.as_object().map(|o| {
+                o.into_iter()
+                    .map(|(k, v)| (k.to_string(), v.as_str().unwrap_or("").to_string()))
+                    .rev()
+                    .collect::<IndexMap<String, String>>()
+            })
+        }),
         children: Vec::new(),
     };
 
@@ -133,7 +138,14 @@ LEFT JOIN
             last_name: r.last_name,
             father_id: r.father_id,
             mother_id: r.mother_id,
-            personal_info: r.personal_info.and_then(|p| p.as_object().cloned()),
+            personal_info: r.personal_info.and_then(|p| {
+                p.as_object().map(|o| {
+                    o.into_iter()
+                        .map(|(k, v)| (k.to_string(), v.as_str().unwrap_or("").to_string()))
+                        .rev()
+                        .collect::<IndexMap<String, String>>()
+                })
+            }),
         })
         .collect();
 

@@ -1,8 +1,7 @@
-use std::collections::HashMap;
-
 use anyhow::anyhow;
 use axum::{http::StatusCode, response::IntoResponse};
 use chrono::{DateTime, Utc};
+use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
 use crate::{auth::AuthError, ErrorResponse, Gender};
@@ -113,8 +112,8 @@ pub struct CreateMember {
     father_id: Option<i32>,
     image: Option<Vec<u8>>,
     /// Generic info about family member
-    /// a HashMap is used to make it dynamic and hold any kind of personal information
-    info: Option<HashMap<String, serde_json::Value>>,
+    /// a map is used to make it dynamic and hold any kind of personal information
+    info: Option<IndexMap<String, serde_json::Value>>,
 }
 
 #[derive(Default)]
@@ -126,7 +125,7 @@ pub struct CreateMemberBuilder {
     mother_id: Option<i32>,
     father_id: Option<i32>,
     image: Option<Vec<u8>>,
-    info: Option<HashMap<String, serde_json::Value>>,
+    info: Option<IndexMap<String, serde_json::Value>>,
 }
 
 impl CreateMemberBuilder {
@@ -171,7 +170,7 @@ impl CreateMemberBuilder {
         self
     }
 
-    fn info(&mut self, info: HashMap<String, serde_json::Value>) -> &mut Self {
+    fn info(&mut self, info: IndexMap<String, serde_json::Value>) -> &mut Self {
         self.info = Some(info);
         self
     }
@@ -210,7 +209,7 @@ pub struct UpdateMember {
     birthday: Option<chrono::DateTime<chrono::Utc>>,
     mother_id: Option<i32>,
     father_id: Option<i32>,
-    info: Option<HashMap<String, serde_json::Value>>,
+    info: Option<IndexMap<String, serde_json::Value>>,
     image: Option<Vec<u8>>,
 }
 
@@ -224,7 +223,7 @@ pub struct UpdateMemberBuilder {
     remove_mother_id: bool,
     father_id: Option<i32>,
     remove_father_id: bool,
-    info: Option<HashMap<String, serde_json::Value>>,
+    info: Option<IndexMap<String, serde_json::Value>>,
     remove_info: bool,
     image: Option<Vec<u8>>,
 }
@@ -281,7 +280,7 @@ impl UpdateMemberBuilder {
         self
     }
 
-    fn info(&mut self, info: HashMap<String, serde_json::Value>) -> &mut Self {
+    fn info(&mut self, info: IndexMap<String, serde_json::Value>) -> &mut Self {
         self.info = Some(info);
         self
     }
@@ -336,7 +335,7 @@ pub struct MemberResponse {
     last_name: String,
     father_id: Option<i32>,
     mother_id: Option<i32>,
-    pub personal_info: Option<serde_json::Map<String, serde_json::Value>>,
+    pub personal_info: Option<IndexMap<String, String>>,
     children: Vec<MemberResponse>,
 }
 
@@ -356,10 +355,14 @@ impl MemberResponse {
                 last_name: m.last_name.clone(),
                 father_id: m.father_id,
                 mother_id: m.mother_id,
-                personal_info: m
-                    .personal_info
-                    .as_ref()
-                    .and_then(|p| p.as_object().cloned()),
+                personal_info: m.personal_info.as_ref().and_then(|p| {
+                    p.as_object().map(|o| {
+                        o.into_iter()
+                            .map(|(k, v)| (k.to_string(), v.as_str().unwrap_or("").to_string()))
+                            .rev()
+                            .collect::<IndexMap<String, String>>()
+                    })
+                }),
                 children: vec![],
             })
             .collect();
@@ -379,5 +382,5 @@ pub struct MemberResponseBrief {
     pub last_name: String,
     pub father_id: Option<i32>,
     pub mother_id: Option<i32>,
-    pub personal_info: Option<serde_json::Map<String, serde_json::Value>>,
+    pub personal_info: Option<IndexMap<String, String>>,
 }
