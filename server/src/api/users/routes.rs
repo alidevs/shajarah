@@ -121,8 +121,8 @@ RETURNING sessions.id
     #[cfg(not(debug_assertions))]
     {
         cookie = cookie
-            // TODO: use the actual domain
-            .domain("salmanforgot.com")
+            // TODO: make this configurable
+            .domain("shajarah.bksalman.com")
             .secure(true);
     }
 
