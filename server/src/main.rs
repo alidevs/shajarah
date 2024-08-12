@@ -113,6 +113,7 @@ async fn main() {
         .layer(
             CorsLayer::new()
                 .allow_origin([
+                    "http://localhost:3030".parse::<HeaderValue>().unwrap(),
                     "http://localhost:3001".parse::<HeaderValue>().unwrap(),
                     "http://localhost:9393".parse::<HeaderValue>().unwrap(),
                     "http://192.168.0.132:3001".parse::<HeaderValue>().unwrap(),
