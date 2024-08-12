@@ -5,13 +5,82 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     rust-overlay.url = "github:oxalica/rust-overlay";
     flake-utils.url = "github:numtide/flake-utils";
+    crane = {
+      url = "github:ipetkov/crane";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs, rust-overlay, flake-utils, ... }:
+  outputs = { self, nixpkgs, rust-overlay, flake-utils, crane, ... }:
     flake-utils.lib.eachDefaultSystem (system:
       let
         overlays = [ (import rust-overlay) ];
         pkgs = import nixpkgs { inherit system overlays; };
+        inherit (pkgs) lib;
+
+        rustToolchainFor = p: p.rust-bin.stable.latest.default.override {
+          # Set the build targets supported by the toolchain,
+          # wasm32-unknown-unknown is required for trunk.
+          targets = [ "wasm32-unknown-unknown" ];
+        };
+        craneLib = ((crane.mkLib pkgs).overrideToolchain rustToolchainFor);
+
+        src = lib.cleanSourceWith {
+          src = ./.;
+          filter = path: type:
+            (lib.hasSuffix "\.html" path) ||
+            (lib.hasSuffix "\.ttf" path) ||
+            (lib.hasSuffix "\.sql" path) ||
+            (lib.hasSuffix "\.scss" path) ||
+            (lib.hasInfix "/assets/" path) ||
+            (craneLib.filterCargoSources path type)
+          ;
+        };
+
+        commonArgs = {
+          inherit src;
+          strictDeps = true;
+
+          buildInputs = [
+          ] ++ lib.optionals pkgs.stdenv.isDarwin [
+            pkgs.libiconv
+          ];
+        };
+
+        # Native packages
+
+        nativeArgs = commonArgs // {
+          cargoExtraArgs = "--package=server";
+          pname = "server";
+        };
+
+        # Build *just* the cargo dependencies, so we can reuse
+        # all of that work (e.g. via cachix) when running in CI
+        cargoArtifacts = craneLib.buildDepsOnly nativeArgs;
+
+        server = craneLib.buildPackage (nativeArgs // {
+          inherit cargoArtifacts;
+          SHAJARAH_DIST = shajarah;
+        });
+
+        # Wasm packages
+
+        wasmArgs = commonArgs // {
+          pname = "shajarah";
+          cargoExtraArgs = "--package=shajarah";
+          CARGO_BUILD_TARGET = "wasm32-unknown-unknown";
+        };
+
+        cargoArtifactsWasm = craneLib.buildDepsOnly (wasmArgs // {
+          doCheck = false;
+        });
+
+        shajarah = craneLib.buildTrunkPackage (wasmArgs // {
+          pname = "shajarah";
+          cargoArtifacts = cargoArtifactsWasm;
+          trunkIndexPath = "index.html";
+          wasm-bindgen-cli = pkgs.wasm-bindgen-cli;
+        });
       in with pkgs; {
         devShells.default = mkShell rec {
           packages = [
@@ -62,5 +131,7 @@
             export $(cat .env)
           '';
         };
+
+        packages.default = server;
       });
 }

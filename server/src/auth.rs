@@ -1,6 +1,7 @@
 use async_trait::async_trait;
 use axum::{extract::FromRequestParts, http::StatusCode, response::IntoResponse, RequestPartsExt};
 use chrono::Utc;
+use sqlx::prelude::FromRow;
 use uuid::Uuid;
 
 use crate::{
@@ -70,29 +71,33 @@ impl<const USER_ROLE: u8> FromRequestParts<AppState> for AuthExtractor<USER_ROLE
                 AuthError::InvalidSession
             })?;
 
-        // let mut query = sessions::table
-        //     .inner_join(users::table)
-        //     .filter(sessions::id.eq(session_id))
-        //     .filter(sessions::expires_at.gt(Utc::now()))
-        //     .into_boxed();
-
         // Safety: USER_ROLE is only provided by casting UserRole variants
         let role: UserRole = unsafe { std::mem::transmute(USER_ROLE) };
 
+        #[derive(FromRow)]
+        struct AuthRow {
+            user_id: Uuid,
+            session_id: Uuid,
+            username: String,
+            email: String,
+            role: UserRole,
+        }
+
         match role {
             UserRole::Admin => {
-                let Some(rec) = sqlx::query!(
+                let Some(rec): Option<AuthRow> = sqlx::query_as(
                     r#"
-SELECT users.id as user_id, sessions.id as session_id, users.username, users.email, users.role as "user_role: UserRole" FROM sessions
+SELECT users.id as user_id, sessions.id as session_id, users.username, users.email, users.role FROM sessions
 INNER JOIN users
   ON sessions.user_id = users.id
 WHERE sessions.id = $1 AND sessions.expires_at > $2 AND users.role = 'admin'"#,
-                session_id,
-                Utc::now()
                 )
+                .bind(session_id)
+                .bind(Utc::now())
                 .fetch_optional(&state.inner.db_pool)
                 .await? else {
-                sqlx::query!(r#"DELETE FROM sessions WHERE id = $1"#, session_id)
+                sqlx::query(r#"DELETE FROM sessions WHERE id = $1"#)
+                    .bind(session_id)
                     .execute(&state.inner.db_pool)
                     .await
                     .ok();
@@ -103,24 +108,25 @@ WHERE sessions.id = $1 AND sessions.expires_at > $2 AND users.role = 'admin'"#,
                         id: rec.user_id,
                         username: rec.username,
                         email: rec.email,
-                        role: rec.user_role,
+                        role: rec.role,
                     },
                     session_id: rec.session_id,
                 })
             }
             UserRole::User => {
-                let Some(rec) = sqlx::query!(
+                let Some(rec): Option<AuthRow> = sqlx::query_as(
                     r#"
-SELECT users.id as user_id, sessions.id as session_id, users.username, users.email, users.role as "user_role: UserRole" FROM sessions
+SELECT users.id as user_id, sessions.id as session_id, users.username, users.email, users.role FROM sessions
 INNER JOIN users
   ON sessions.user_id = users.id
 WHERE sessions.id = $1 AND sessions.expires_at > $2"#,
-                    session_id,
-                    Utc::now()
                 )
+                .bind(session_id)
+                .bind(Utc::now())
                 .fetch_optional(&state.inner.db_pool)
                 .await? else {
-                sqlx::query!(r#"DELETE FROM sessions WHERE id = $1"#, session_id)
+                sqlx::query(r#"DELETE FROM sessions WHERE id = $1"#)
+                    .bind(session_id)
                     .execute(&state.inner.db_pool)
                     .await
                     .ok();
@@ -131,40 +137,11 @@ WHERE sessions.id = $1 AND sessions.expires_at > $2"#,
                         id: rec.user_id,
                         username: rec.username,
                         email: rec.email,
-                        role: rec.user_role,
+                        role: rec.role,
                     },
                     session_id: rec.session_id,
                 })
             }
         }
-
-        // let Some(rec) = sqlx::query(&query).fetch_optional(&state.db_pool).await? else {
-        //     sqlx::query!(r#"DELETE FROM sessions WHERE id = $1"#, session_id)
-        //         .execute(&state.db_pool)
-        //         .await
-        //         .ok();
-        //     return Err(AuthError::InvalidSession);
-        // };
-
-        // let Ok((user, session)) = query
-        //     .select((User::as_select(), Session::as_select()))
-        //     .get_result::<(User, Session)>(&mut db)
-        //     .await
-        // else {
-        //     diesel::delete(sessions::table.filter(sessions::id.eq(session_id)))
-        //         .execute(&mut db)
-        //         .await?;
-        //     return Err(AuthError::InvalidSession);
-        // };
-
-        // Ok(AuthExtractor {
-        //     current_user: UserResponseBrief {
-        //         id: user.id,
-        //         username: user.username,
-        //         email: user.email,
-        //         role: user.role,
-        //     },
-        //     session_id: session.id,
-        // })
     }
 }

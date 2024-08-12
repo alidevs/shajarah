@@ -31,7 +31,12 @@ async fn main() {
 
     let pool = PgPool::connect(&std::env::var("DATABASE_URL").unwrap())
         .await
-        .unwrap();
+        .expect("Failed to connect to DB");
+
+    sqlx::migrate!()
+        .run(&pool)
+        .await
+        .expect("Failed to migrate DB");
 
     let config = match Config::load_config() {
         Ok(config) => config,
@@ -69,7 +74,7 @@ async fn main() {
         }),
     };
 
-    let app = Router::new()
+    let mut app = Router::new()
         .route("/admin", get(admin_page))
         .route("/login", get(login_page))
         .route("/api/members", get(get_members).post(add_member))
@@ -77,8 +82,13 @@ async fn main() {
         .route("/api/members/flat", get(get_members_flat))
         .route("/api/users/logout", get(logout))
         .route("/api/users/login", post(login))
-        .route("/api/users/me", get(me))
-        .nest_service("/assets", ServeDir::new("assets"));
+        .route("/api/users/me", get(me));
+
+    if let Some(dist) = option_env!("SHAJARAH_DIST") {
+        app = app.nest_service("/", ServeDir::new(dist));
+    } else if let Ok(dist) = std::env::var("SHAJARAH_DIST") {
+        app = app.nest_service("/", ServeDir::new(dist));
+    }
 
     #[cfg(debug_assertions)]
     let app = app.route("/api/users", post(create_user));

@@ -22,24 +22,23 @@ const FIELDS_LIMIT: i32 = 10;
 pub async fn get_members(
     State(state): State<Arc<InnerAppState>>,
 ) -> anyhow::Result<Json<MemberResponse>, MembersError> {
-    let recs = sqlx::query_as!(
-        MemberRow,
+    let recs: Vec<MemberRow> = sqlx::query_as(
         r#"
 SELECT
     m.id,
     m.name,
-    m.gender as "gender: Gender",
+    m.gender,
     m.birthday,
     m.last_name,
     m.personal_info,
     mother.id AS mother_id,
     mother.name AS mother_name,
-    mother.gender AS "mother_gender: Gender",
+    mother.gender AS mother_gender,
     mother.birthday AS mother_birthday,
     mother.last_name AS mother_last_name,
     father.id AS father_id,
     father.name AS father_name,
-    father.gender AS "father_gender: Gender",
+    father.gender AS father_gender,
     father.birthday AS father_birthday,
     father.last_name AS father_last_name
 FROM
@@ -93,24 +92,23 @@ LEFT JOIN
 pub async fn get_members_flat(
     State(state): State<Arc<InnerAppState>>,
 ) -> anyhow::Result<Json<Vec<MemberResponseBrief>>, MembersError> {
-    let recs = sqlx::query_as!(
-        MemberRow,
+    let recs: Vec<MemberRow> = sqlx::query_as(
         r#"
 SELECT
     m.id,
     m.name,
-    m.gender as "gender: Gender",
+    m.gender,
     m.birthday,
     m.last_name,
     m.personal_info,
     mother.id AS mother_id,
     mother.name AS mother_name,
-    mother.gender AS "mother_gender: Gender",
+    mother.gender AS mother_gender,
     mother.birthday AS mother_birthday,
     mother.last_name AS mother_last_name,
     father.id AS father_id,
     father.name AS father_name,
-    father.gender AS "father_gender: Gender",
+    father.gender AS father_gender,
     father.birthday AS father_birthday,
     father.last_name AS father_last_name
 FROM
@@ -157,7 +155,7 @@ pub async fn add_member(
     _auth: AuthExtractor<{ UserRole::Admin as u8 }>,
     State(state): State<Arc<InnerAppState>>,
     mut multipart: Multipart,
-) -> anyhow::Result<Json<i32>, MembersError> {
+) -> anyhow::Result<(), MembersError> {
     let mut limit = FIELDS_LIMIT;
     let mut create_member_builder = CreateMemberBuilder::new();
 
@@ -299,25 +297,25 @@ pub async fn add_member(
         .ok()
     });
 
-    let rec = sqlx::query!(
+    sqlx::query(
         r#"
     INSERT INTO members (name, gender, birthday, last_name, father_id, mother_id, image, personal_info)
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-    RETURNING id, name, gender as "gender: Gender", birthday, mother_id, father_id, last_name
+    RETURNING id
             "#,
-        create_member.name,
-        create_member.gender as _,
-        create_member.birthday,
-        create_member.last_name,
-        create_member.father_id,
-        create_member.mother_id,
-        create_member.image,
-        info,
     )
-    .fetch_one(&state.db_pool)
+    .bind(create_member.name)
+    .bind(create_member.gender)
+    .bind(create_member.birthday)
+    .bind(create_member.last_name)
+    .bind(create_member.father_id)
+    .bind(create_member.mother_id)
+    .bind(create_member.image)
+    .bind(info)
+    .execute(&state.db_pool)
     .await?;
 
-    Ok(Json(rec.id))
+    Ok(())
 }
 
 /// Edit a family member
@@ -451,15 +449,15 @@ pub async fn edit_member(
     let mut tx = state.db_pool.begin().await?;
 
     if let Some(name) = &update_member.name {
-        sqlx::query!(
+        sqlx::query(
             r#"
     UPDATE members
     SET name = $2
     WHERE id = $1
             "#,
-            id,
-            name,
         )
+        .bind(id)
+        .bind(name)
         .execute(&mut *tx)
         .await?;
     }
@@ -468,93 +466,92 @@ pub async fn edit_member(
         log::debug!("id: {}", update_member.id);
         log::debug!("last_name: {}", last_name);
 
-        sqlx::query!(
+        sqlx::query(
             r#"
 UPDATE members
 SET last_name = $1::TEXT
 WHERE id = $2::INTEGER"#,
-            last_name,
-            id,
         )
+        .bind(last_name)
+        .bind(id)
         .execute(&mut *tx)
         .await?;
     }
 
     if let Some(birthday) = &update_member.birthday {
-        sqlx::query!(
+        sqlx::query(
             r#"
     UPDATE members
     SET birthday = $2
     WHERE id = $1
             "#,
-            id,
-            birthday,
         )
+        .bind(id)
+        .bind(birthday)
         .execute(&mut *tx)
         .await?;
     }
 
     if let Some(gender) = &update_member.gender {
-        sqlx::query!(
+        sqlx::query(
             r#"
-    UPDATE members
-    SET gender = $2
-    WHERE id = $1
-    RETURNING gender as "gender: Gender"
+UPDATE members
+SET gender = $2
+WHERE id = $1
             "#,
-            id,
-            gender as _,
         )
-        .fetch_one(&mut *tx)
+        .bind(id)
+        .bind(gender)
+        .execute(&mut *tx)
         .await?;
     }
 
     if let Some(mother_id) = &update_member.mother_id {
-        sqlx::query!(
+        sqlx::query(
             r#"
     UPDATE members
     SET mother_id = $2
     WHERE id = $1
             "#,
-            id,
-            mother_id,
         )
+        .bind(id)
+        .bind(mother_id)
         .execute(&mut *tx)
         .await?;
     } else if remove_mother_id {
-        sqlx::query!(
+        sqlx::query(
             r#"
     UPDATE members
     SET mother_id = NULL
     WHERE id = $1
             "#,
-            id,
         )
+        .bind(id)
         .execute(&mut *tx)
         .await?;
     }
 
     if let Some(father_id) = &update_member.father_id {
-        sqlx::query!(
+        sqlx::query(
             r#"
     UPDATE members
     SET father_id = $2
     WHERE id = $1
             "#,
-            id,
-            father_id,
         )
+        .bind(id)
+        .bind(father_id)
         .execute(&mut *tx)
         .await?;
     } else if remove_father_id {
-        sqlx::query!(
+        sqlx::query(
             r#"
     UPDATE members
     SET father_id = NULL
     WHERE id = $1
             "#,
-            id,
         )
+        .bind(id)
         .execute(&mut *tx)
         .await?;
     }
@@ -565,44 +562,44 @@ WHERE id = $2::INTEGER"#,
         ))
         .unwrap();
 
-        sqlx::query!(
+        sqlx::query(
             r#"
     UPDATE members
     SET personal_info = $2
     WHERE id = $1
             "#,
-            id,
-            info,
         )
+        .bind(id)
+        .bind(info)
         .execute(&mut *tx)
         .await?;
     } else if remove_info {
-        sqlx::query!(
+        sqlx::query(
             r#"
     UPDATE members
     SET personal_info = NULL
     WHERE id = $1
             "#,
-            id,
         )
+        .bind(id)
         .execute(&mut *tx)
         .await?;
     }
 
     // TODO: image
-    // if let Some(image) = &update_member.image {
-    //     sqlx::query!(
-    //         r#"
+    //     if let Some(image) = &update_member.image {
+    //         sqlx::query(
+    //             r#"
     // UPDATE members
     // SET image = $2
     // WHERE id = $1
-    //         "#,
-    //         update_member.id,
-    //         image,
-    //     )
-    //     .execute(&mut *tx)
-    //     .await?;
-    // }
+    //             "#,
+    //         )
+    //         .bind(update_member.id)
+    //         .bind(image)
+    //         .execute(&mut *tx)
+    //         .await?;
+    //     }
 
     tx.commit().await?;
 
@@ -615,11 +612,11 @@ pub async fn delete_member(
     State(state): State<Arc<InnerAppState>>,
     Path(id): Path<i32>,
 ) -> anyhow::Result<(), MembersError> {
-    sqlx::query!(
+    sqlx::query(
         r#"
 DELETE FROM members WHERE id = $1"#,
-        id,
     )
+    .bind(id)
     .execute(&state.db_pool)
     .await?;
 

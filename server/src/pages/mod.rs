@@ -54,7 +54,11 @@ pub async fn admin_page(
 ) -> Result<impl IntoResponse, PagesError> {
     match auth {
         Ok(auth) => {
-            let members = get_members_flat(state).await?;
+            let members = match get_members_flat(state).await {
+                Ok(members) => members,
+                Err(MembersError::NoMembers) => Vec::new().into(),
+                Err(e) => return Err(e.into()),
+            };
             Ok(AdminTemplate {
                 name: auth.current_user.username,
                 members: members.0.into_iter().rev().collect(),

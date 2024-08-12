@@ -17,8 +17,10 @@ CREATE TABLE IF NOT EXISTS members
 
    CONSTRAINT fk_mother
       FOREIGN KEY(mother_id)
-        REFERENCES members(id),
+        REFERENCES members(id)
+        ON DELETE SET NULL,
    CONSTRAINT fk_father
       FOREIGN KEY(father_id)
         REFERENCES members(id)
+        ON DELETE SET NULL
 );

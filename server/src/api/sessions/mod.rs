@@ -97,26 +97,18 @@ pub async fn refresh_session(
     log::info!("running refresh_session middleware");
 
     if let Some(session_id) = session.session_id {
-        sqlx::query!(
+        sqlx::query(
             r#"
 UPDATE sessions
 SET expires_at = $1
 WHERE id = $2 AND expires_at = $3
             "#,
-            Utc::now() + Duration::days(2),
-            session_id,
-            Utc::now(),
         )
+        .bind(Utc::now() + Duration::days(2))
+        .bind(session_id)
+        .bind(Utc::now())
         .execute(&state.db_pool)
         .await?;
-        // diesel::update(
-        //     sessions::table
-        //         .filter(sessions::id.eq(session_id))
-        //         .filter(sessions::expires_at.gt(Utc::now())),
-        // )
-        // .set(sessions::expires_at.eq(Utc::now() + Duration::days(2)))
-        // .execute(&mut db)
-        // .await?;
     }
 
     Ok(next.run(request).await)
