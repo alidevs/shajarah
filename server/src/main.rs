@@ -100,11 +100,9 @@ async fn main() {
         .route("/api/users/login", post(login))
         .route("/api/users/me", get(me));
 
-    // XXX: using an environment variable from compile time
-    //      could be annoying in some cases
-    if let Some(dist) = option_env!("SHAJARAH_DIST") {
+    if let Ok(dist) = std::env::var("SHAJARAH_DIST") {
         app = app.nest_service("/", ServeDir::new(dist));
-    } else if let Ok(dist) = std::env::var("SHAJARAH_DIST") {
+    } else if let Some(dist) = option_env!("SHAJARAH_DIST") {
         app = app.nest_service("/", ServeDir::new(dist));
     }
 
