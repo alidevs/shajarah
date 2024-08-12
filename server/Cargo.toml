@@ -11,6 +11,7 @@ askama_axum = "0.4.0"
 async-trait = "0.1.81"
 axum = { version = "0.7.5", features = ["macros", "multipart"] }
 chrono = { workspace = true }
+clap = { version = "4.5.15", features = ["derive"] }
 dotenvy = "0.15.7"
 env_logger = "0.11.4"
 indexmap = { workspace = true }
