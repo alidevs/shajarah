@@ -624,12 +624,8 @@ impl Node {
         let painter = ui.painter();
 
         #[cfg(feature = "debug-ui")]
-        painter.line_segment([Pos2::new(coords.x, coords.y), viewport.center()], stroke);
-
-        #[cfg(feature = "debug-ui")]
         {
-            // log::debug!("coords: {coords:?}");
-            log::debug!("offset: {:?}", self.offset);
+            log::debug!("coords: {coords:?}");
         }
 
         for child in self.children.iter() {
