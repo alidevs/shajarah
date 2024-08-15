@@ -4,7 +4,7 @@ use axum::{
     extract::{Multipart, Path, State},
     Json,
 };
-use chrono::{DateTime, NaiveDate, NaiveTime};
+use chrono::{NaiveDate, NaiveTime};
 use indexmap::IndexMap;
 use serde::Deserialize;
 
@@ -370,10 +370,16 @@ pub async fn edit_member(
                 let Ok(birthday) = field.text().await else {
                     return Err(MembersError::InvalidValue(String::from("birthday")));
                 };
-                let birthday = DateTime::parse_from_rfc2822(&birthday)
-                    .or(DateTime::parse_from_rfc3339(&birthday))
-                    .map_err(|_e| MembersError::InvalidValue(String::from("birthday")))?;
-                update_member_builder.birthday(birthday.to_utc());
+                let birthday = NaiveDate::parse_from_str(&birthday, "%Y-%m-%d")
+                    .map_err(|e| {
+                        log::error!("birthday error: {e}");
+                        MembersError::InvalidValue(String::from("birthday"))
+                    })?
+                    .and_time(
+                        NaiveTime::from_hms_opt(0, 0, 1).expect("00:00:01 should be a valid time"),
+                    )
+                    .and_utc();
+                update_member_builder.birthday(birthday);
             }
             Some("father_id") => {
                 let Ok(father_id) = field.text().await else {
