@@ -15,6 +15,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{zoom::Zoom, Gender};
 
+const DEFAULT_IMAGE: egui::ImageSource<'static> = include_image!("../assets/avatar.png");
 const NODE_RADIUS: f32 = 30.;
 const NODE_TEXT_PADDING: f32 = 10.;
 const MAX_SCALE: f32 = 5.0;
@@ -587,6 +588,7 @@ pub struct Node {
     mother_id: Option<i32>,
     pub personal_info: Option<IndexMap<String, String>>,
     pub children: Vec<Node>,
+    image: Option<Vec<u8>>,
 
     /// used for displaying or hiding the member info window
     #[serde(skip)]
@@ -783,7 +785,18 @@ impl Node {
         #[cfg(feature = "debug-ui")]
         painter.rect_stroke(image_rect, Rounding::ZERO, Stroke::new(2.0, Color32::GREEN));
 
-        egui::Image::new(include_image!("../assets/yoda.png"))
+        let image = self
+            .image
+            .as_ref()
+            .map(|i| egui::ImageSource::Bytes {
+                uri: format!("{}-{}", self.id, self.name).into(),
+                bytes: egui::load::Bytes::from(i.clone()),
+            })
+            .unwrap_or(DEFAULT_IMAGE);
+
+        log::debug!("image: {:?}", image);
+
+        egui::Image::new(image)
             .rounding(Rounding::same(NODE_RADIUS * 2.) * scale)
             .paint_at(ui, image_rect);
 

@@ -16,8 +16,14 @@ use crate::{
 };
 
 mod filters {
+    use base64::Engine;
+
     pub fn deref_i32(s: &i32) -> ::askama::Result<i32> {
         Ok(*s)
+    }
+
+    pub fn bytes_to_base64(bytes: &[u8]) -> ::askama::Result<String> {
+        Ok(base64::prelude::BASE64_STANDARD.encode(bytes))
     }
 }
 

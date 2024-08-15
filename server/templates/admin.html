@@ -40,7 +40,7 @@
   </style>
   <div dir="rtl" class="main-container">
     <button onclick="logout()">تسجيل الخروج</button>
-    <div>اهلا، {{ name }}!</div>
+    <span>اهلا، {{ name }}!</span>
 
     <form autocomplete="off" id="new-member-form" enctype="multipart/form-data" action="#" method="post"
       onsubmit="new_member(event)">
@@ -76,7 +76,7 @@
         </select>
       </div>
       <div>
-        <label for="new-member-mother-id">معرف الاب:</label>
+        <label for="new-member-father-id">معرف الاب:</label>
         <select id="new-member-father-id" name="father_id">
           <option selected value> -- اختر المعرف -- </option>
           {% for member in members %}
@@ -110,6 +110,7 @@
         <th>معرف الاب</th>
         <th>معرف الام</th>
         <th>معلومات شخصية</th>
+        <th>الصورة الشخصية</th>
         <th></th>
         <th></th>
       </tr>
@@ -146,6 +147,19 @@
         <td>
           <pre><code>{{ personal_info|json|safe }}</code></pre>
         </td>
+        {% when None %}
+        <td>NULL</td>
+        {% endmatch %}
+        {% match member.image %}
+        {% when Some with (image) %}
+        {% match member.image_type %}
+        {% when Some with (image_type) %}
+        <td style="max-width: 10rem;">
+          <img style="max-width: 100%;" src="data:{{ image_type }};base64, {{ image|bytes_to_base64 }}" />
+        </td>
+        {% when None %}
+        <td>NULL</td>
+        {% endmatch %}
         {% when None %}
         <td>NULL</td>
         {% endmatch %}
@@ -283,9 +297,16 @@
       const formElement = e.currentTarget;
 
       const formData = new FormData();
-      formElement.querySelectorAll("input[name], select[name]").forEach((e) => {
-        formData.append(e.name, e.value);
-      });
+      for (e of formElement.querySelectorAll("input[name], select[name]")) {
+        if (e.name === "image") {
+          if (e.files[0]) {
+            const buf = await e.files[0].arrayBuffer();
+            formData.append(e.name, new Blob([buf], {type: e.files[0].type}));
+          }
+        } else {
+          formData.append(e.name, e.value);
+        }
+      }
 
       const pairs = formElement.querySelectorAll(".new-member-pair");
       const personalInfo = {};

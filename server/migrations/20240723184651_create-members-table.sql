@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS members
     birthday TIMESTAMPTZ,
     last_name TEXT NOT NULL,
     image BYTEA,
+    image_type TEXT,
     mother_id INTEGER,
     father_id INTEGER,
 

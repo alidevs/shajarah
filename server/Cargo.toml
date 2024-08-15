@@ -10,6 +10,7 @@ askama = { version = "0.12.1", features = ["with-axum", "serde-json"] }
 askama_axum = "0.4.0"
 async-trait = "0.1.81"
 axum = { version = "0.7.5", features = ["macros", "multipart"] }
+base64 = "0.22.1"
 chrono = { workspace = true }
 clap = { version = "4.5.15", features = ["derive"] }
 dotenvy = "0.15.7"

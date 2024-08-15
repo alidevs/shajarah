@@ -31,6 +31,9 @@ SELECT
     m.birthday,
     m.last_name,
     m.personal_info,
+    m.image,
+    m.image,
+    m.image_type,
     mother.id AS mother_id,
     mother.name AS mother_name,
     mother.gender AS mother_gender,
@@ -80,6 +83,8 @@ LEFT JOIN
             })
         }),
         children: Vec::new(),
+        image: root.image.clone(),
+        image_type: root.image_type.clone(),
     };
 
     root.add_all_children(&recs);
@@ -101,6 +106,8 @@ SELECT
     m.birthday,
     m.last_name,
     m.personal_info,
+    m.image,
+    m.image_type,
     mother.id AS mother_id,
     mother.name AS mother_name,
     mother.gender AS mother_gender,
@@ -144,6 +151,8 @@ LEFT JOIN
                         .collect::<IndexMap<String, String>>()
                 })
             }),
+            image: r.image,
+            image_type: r.image_type,
         })
         .collect();
 
@@ -242,7 +251,8 @@ pub async fn add_member(
             }
             Some("image") => {
                 if let Some(image_content_type) = field.content_type() {
-                    match image_content_type {
+                    let image_content_type = image_content_type.to_string();
+                    match image_content_type.as_str() {
                         "image/png" | "image/jpg" | "image/jpeg" => {
                             let Ok(image) = field.bytes().await else {
                                 return Err(MembersError::InvalidValue(String::from("image")));
@@ -253,6 +263,7 @@ pub async fn add_member(
                             }
 
                             create_member_builder.image(image.to_vec());
+                            create_member_builder.image_type(image_content_type.to_string());
                         }
                         mime_type => {
                             log::debug!("{mime_type}");
@@ -299,8 +310,8 @@ pub async fn add_member(
 
     sqlx::query(
         r#"
-    INSERT INTO members (name, gender, birthday, last_name, father_id, mother_id, image, personal_info)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    INSERT INTO members (name, gender, birthday, last_name, father_id, mother_id, image, image_type, personal_info)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
     RETURNING id
             "#,
     )
@@ -311,6 +322,7 @@ pub async fn add_member(
     .bind(create_member.father_id)
     .bind(create_member.mother_id)
     .bind(create_member.image)
+    .bind(create_member.image_type)
     .bind(info)
     .execute(&state.db_pool)
     .await?;

@@ -111,6 +111,7 @@ pub struct CreateMember {
     mother_id: Option<i32>,
     father_id: Option<i32>,
     image: Option<Vec<u8>>,
+    image_type: Option<String>,
     /// Generic info about family member
     /// a map is used to make it dynamic and hold any kind of personal information
     info: Option<IndexMap<String, serde_json::Value>>,
@@ -125,6 +126,7 @@ pub struct CreateMemberBuilder {
     mother_id: Option<i32>,
     father_id: Option<i32>,
     image: Option<Vec<u8>>,
+    image_type: Option<String>,
     info: Option<IndexMap<String, serde_json::Value>>,
 }
 
@@ -170,6 +172,11 @@ impl CreateMemberBuilder {
         self
     }
 
+    fn image_type(&mut self, image_type: String) -> &mut Self {
+        self.image_type = Some(image_type);
+        self
+    }
+
     fn info(&mut self, info: IndexMap<String, serde_json::Value>) -> &mut Self {
         self.info = Some(info);
         self
@@ -187,6 +194,10 @@ impl CreateMemberBuilder {
             .birthday
             .ok_or(anyhow!("birthday field was not provided"))?;
 
+        if self.image.is_some() != self.image_type.is_some() {
+            return Err(anyhow!("image or image_type was not added"));
+        }
+
         Ok(CreateMember {
             name,
             last_name,
@@ -196,6 +207,7 @@ impl CreateMemberBuilder {
             father_id: self.father_id,
             image: self.image,
             info: self.info,
+            image_type: self.image_type,
         })
     }
 }
@@ -324,6 +336,8 @@ struct MemberRow {
     father_gender: Option<Gender>,
     father_birthday: Option<chrono::DateTime<chrono::Utc>>,
     father_last_name: Option<String>,
+    image: Option<Vec<u8>>,
+    image_type: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -337,10 +351,12 @@ pub struct MemberResponse {
     mother_id: Option<i32>,
     pub personal_info: Option<IndexMap<String, String>>,
     children: Vec<MemberResponse>,
+    image: Option<Vec<u8>>,
+    image_type: Option<String>,
 }
 
 impl MemberResponse {
-    fn add_all_children(&mut self, all_members: &Vec<MemberRow>) {
+    fn add_all_children(&mut self, all_members: &[MemberRow]) {
         self.children = all_members
             .iter()
             .filter(|m| {
@@ -364,6 +380,8 @@ impl MemberResponse {
                     })
                 }),
                 children: vec![],
+                image: m.image.clone(),
+                image_type: m.image_type.clone(),
             })
             .collect();
         for child in &mut self.children {
@@ -383,4 +401,6 @@ pub struct MemberResponseBrief {
     pub father_id: Option<i32>,
     pub mother_id: Option<i32>,
     pub personal_info: Option<IndexMap<String, String>>,
+    pub image: Option<Vec<u8>>,
+    pub image_type: Option<String>,
 }
