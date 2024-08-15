@@ -223,6 +223,7 @@ pub struct UpdateMember {
     father_id: Option<i32>,
     info: Option<IndexMap<String, serde_json::Value>>,
     image: Option<Vec<u8>>,
+    image_type: Option<String>,
 }
 
 #[derive(Default)]
@@ -238,6 +239,7 @@ pub struct UpdateMemberBuilder {
     info: Option<IndexMap<String, serde_json::Value>>,
     remove_info: bool,
     image: Option<Vec<u8>>,
+    image_type: Option<String>,
 }
 
 impl UpdateMemberBuilder {
@@ -302,7 +304,16 @@ impl UpdateMemberBuilder {
         self
     }
 
+    fn image_type(&mut self, image_type: String) -> &mut Self {
+        self.image_type = Some(image_type);
+        self
+    }
+
     fn build(self, id: i32) -> anyhow::Result<UpdateMember> {
+        if self.image.is_some() != self.image_type.is_some() {
+            return Err(anyhow!("image or image_type was not added"));
+        }
+
         Ok(UpdateMember {
             id,
             name: self.name,
@@ -312,6 +323,7 @@ impl UpdateMemberBuilder {
             mother_id: self.mother_id,
             father_id: self.father_id,
             image: self.image,
+            image_type: self.image_type,
             info: self.info,
         })
     }

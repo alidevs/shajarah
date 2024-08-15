@@ -370,9 +370,16 @@
 
       let formData = new FormData();
 
-      formElement.querySelectorAll("input[name].changed").forEach((element) => {
-        formData.append(element.name, element.value);
-      });
+      for (e of formElement.querySelectorAll("input[name].changed, select[name].changed")) {
+        if (e.name === "image") {
+          if (e.files[0]) {
+            const buf = await e.files[0].arrayBuffer();
+            formData.append(e.name, new Blob([buf], {type: e.files[0].type}));
+          }
+        } else {
+          formData.append(e.name, e.value);
+        }
+      }
 
       const pairs = formElement.querySelectorAll(".edit-member-pair");
       const personalInfo = {};
@@ -387,6 +394,8 @@
       });
 
       formData.append("info", JSON.stringify(personalInfo));
+
+      console.log(formData);
 
       const res = await fetch(`/api/members/${id}`, {
         method: "PUT",

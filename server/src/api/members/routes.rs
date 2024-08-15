@@ -409,19 +409,27 @@ pub async fn edit_member(
             }
             Some("image") => {
                 if let Some(image_content_type) = field.content_type() {
-                    match image_content_type {
+                    let image_content_type = image_content_type.to_string();
+                    match image_content_type.as_str() {
                         "image/png" | "image/jpg" | "image/jpeg" => {
                             let Ok(image) = field.bytes().await else {
                                 return Err(MembersError::InvalidValue(String::from("image")));
                             };
+
+                            // TODO: support removing member image
+                            // if image.is_empty() {
+
+                            // }
+
                             update_member_builder.image(image.to_vec());
+                            update_member_builder.image_type(image_content_type);
                         }
                         _ => {
                             return Err(MembersError::InvalidImage);
                         }
                     }
                 } else {
-                    return Err(MembersError::InvalidImage);
+                    continue;
                 }
             }
             Some("info") => {
@@ -598,20 +606,22 @@ WHERE id = $1
         .await?;
     }
 
-    // TODO: image
-    //     if let Some(image) = &update_member.image {
-    //         sqlx::query(
-    //             r#"
-    // UPDATE members
-    // SET image = $2
-    // WHERE id = $1
-    //             "#,
-    //         )
-    //         .bind(update_member.id)
-    //         .bind(image)
-    //         .execute(&mut *tx)
-    //         .await?;
-    //     }
+    if let Some((image, image_type)) = &update_member
+        .image
+        .and_then(|i| update_member.image_type.map(|it| (i, it)))
+    {
+        sqlx::query(
+            r#"
+UPDATE members
+SET image = $2, image_type = $3
+WHERE id = $1"#,
+        )
+        .bind(update_member.id)
+        .bind(image)
+        .bind(image_type)
+        .execute(&mut *tx)
+        .await?;
+    }
 
     tx.commit().await?;
 
