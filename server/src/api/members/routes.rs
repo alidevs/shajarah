@@ -2,16 +2,21 @@ use std::sync::Arc;
 
 use axum::{
     extract::{Multipart, Path, State},
+    response::IntoResponse,
     Json,
 };
 use chrono::{NaiveDate, NaiveTime};
 use indexmap::IndexMap;
 use serde::Deserialize;
 
-use crate::{api::users::models::UserRole, auth::AuthExtractor, Gender, InnerAppState};
+use crate::{
+    api::{members::MemberRow, users::models::UserRole},
+    auth::AuthExtractor,
+    Gender, InnerAppState,
+};
 
 use super::{
-    CreateMemberBuilder, MemberResponse, MemberResponseBrief, MemberRow, MembersError,
+    CreateMemberBuilder, MemberResponse, MemberResponseBrief, MemberRowWithParents, MembersError,
     UpdateMemberBuilder,
 };
 
@@ -22,7 +27,7 @@ const FIELDS_LIMIT: i32 = 10;
 pub async fn get_members(
     State(state): State<Arc<InnerAppState>>,
 ) -> anyhow::Result<Json<MemberResponse>, MembersError> {
-    let recs: Vec<MemberRow> = sqlx::query_as(
+    let recs: Vec<MemberRowWithParents> = sqlx::query_as(
         r#"
 SELECT
     m.id,
@@ -30,10 +35,9 @@ SELECT
     m.gender,
     m.birthday,
     m.last_name,
-    m.personal_info,
-    m.image,
     m.image,
     m.image_type,
+    m.personal_info,
     mother.id AS mother_id,
     mother.name AS mother_name,
     mother.gender AS mother_gender,
@@ -97,7 +101,7 @@ LEFT JOIN
 pub async fn get_members_flat(
     State(state): State<Arc<InnerAppState>>,
 ) -> anyhow::Result<Json<Vec<MemberResponseBrief>>, MembersError> {
-    let recs: Vec<MemberRow> = sqlx::query_as(
+    let recs: Vec<MemberRowWithParents> = sqlx::query_as(
         r#"
 SELECT
     m.id,
@@ -105,15 +109,15 @@ SELECT
     m.gender,
     m.birthday,
     m.last_name,
-    m.personal_info,
     m.image,
     m.image_type,
-    mother.id AS mother_id,
+    m.personal_info,
+    mother.id as mother_id,
     mother.name AS mother_name,
     mother.gender AS mother_gender,
     mother.birthday AS mother_birthday,
     mother.last_name AS mother_last_name,
-    father.id AS father_id,
+    father.id as father_id,
     father.name AS father_name,
     father.gender AS father_gender,
     father.birthday AS father_birthday,
@@ -647,6 +651,133 @@ DELETE FROM members WHERE id = $1"#,
     .bind(id)
     .execute(&state.db_pool)
     .await?;
+
+    Ok(())
+}
+
+pub async fn export_members(
+    _auth: AuthExtractor<{ UserRole::Admin as u8 }>,
+    State(state): State<Arc<InnerAppState>>,
+) -> Result<impl IntoResponse, MembersError> {
+    let recs: Vec<MemberRow> = sqlx::query_as(
+        r#"
+SELECT
+m.id,
+m.name,
+m.gender,
+m.birthday,
+m.last_name,
+m.image,
+m.image_type,
+m.personal_info,
+m.father_id,
+m.mother_id
+FROM members m
+"#,
+    )
+    .fetch_all(&state.db_pool)
+    .await?;
+
+    let mut csv_writer = csv::Writer::from_writer(vec![]);
+
+    for rec in recs {
+        csv_writer.serialize(rec).map_err(|e| {
+            log::error!("{e}");
+            MembersError::SomethingWentWrong
+        })?;
+    }
+
+    let headers = [
+        (axum::http::header::CONTENT_TYPE, "text/csv"),
+        (
+            axum::http::header::CONTENT_DISPOSITION,
+            &r#"attachment; filename="exported-members.csv""#,
+        ),
+    ];
+
+    csv_writer.flush().map_err(|e| {
+        log::error!("{e}");
+        MembersError::SomethingWentWrong
+    })?;
+
+    let data = csv_writer.into_inner().map_err(|e| {
+        log::error!("{e}");
+        MembersError::SomethingWentWrong
+    })?;
+
+    Ok((headers, data))
+}
+
+pub async fn upload_members_csv(
+    _auth: AuthExtractor<{ UserRole::Admin as u8 }>,
+    State(state): State<Arc<InnerAppState>>,
+    mut multipart: Multipart,
+) -> Result<(), MembersError> {
+    while let Some(field) = multipart.next_field().await.unwrap() {
+        match field.name() {
+            Some("members_csv") => {
+                let file_data = field.bytes().await.map_err(|e| {
+                    log::error!("{e}");
+                    MembersError::SomethingWentWrong
+                })?;
+
+                let file_data = file_data.to_vec();
+
+                let mut csv_reader = csv::Reader::from_reader(file_data.as_slice());
+
+                let members: Vec<MemberRow> = csv_reader
+                    .deserialize::<MemberRow>()
+                    .map(|r| {
+                        r.map_err(|e| {
+                            log::error!("{e}");
+                            MembersError::SomethingWentWrong
+                        })
+                    })
+                    .collect::<Result<Vec<MemberRow>, MembersError>>()?;
+
+                for member in members {
+                    let query = sqlx::query(
+                        r#"
+                                UPDATE members
+                                SET name = $1, last_name = $2, gender = $3, birthday = $4, mother_id = $5, father_id = $6
+                                WHERE id = $7
+                                RETURNING id
+                            "#,
+                    )
+                    .bind(&member.name)
+                    .bind(&member.last_name)
+                    .bind(member.gender)
+                    .bind(member.birthday)
+                    .bind(member.mother_id)
+                    .bind(member.father_id)
+                    .bind(member.id)
+                    .fetch_optional(&state.db_pool).await?;
+
+                    if query.is_none() {
+                        sqlx::query(
+                            r#"
+                                INSERT INTO members (name, last_name, gender, birthday, mother_id, father_id)
+                                VALUES ($1, $2, $3, $4, $5, $6)
+                                "#,
+                        )
+                        .bind(&member.name)
+                        .bind(&member.last_name)
+                        .bind(member.gender)
+                        .bind(member.birthday)
+                        .bind(member.mother_id)
+                        .bind(member.father_id)
+                        .execute(&state.db_pool).await?;
+                    }
+                }
+            }
+            Some(_) => {
+                continue;
+            }
+            None => {
+                return Err(MembersError::BadRequest);
+            }
+        }
+    }
 
     Ok(())
 }

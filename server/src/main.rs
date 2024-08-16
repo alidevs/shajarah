@@ -9,7 +9,10 @@ use axum::{
 use rand::Rng;
 use server::{
     api::{
-        members::routes::{add_member, delete_member, edit_member, get_members, get_members_flat},
+        members::routes::{
+            add_member, delete_member, edit_member, export_members, get_members, get_members_flat,
+            upload_members_csv,
+        },
         sessions::refresh_session,
         users::routes::{login, logout, me},
     },
@@ -96,6 +99,8 @@ async fn main() {
         .route("/api/members", get(get_members).post(add_member))
         .route("/api/members/:id", put(edit_member).delete(delete_member))
         .route("/api/members/flat", get(get_members_flat))
+        .route("/api/members/export", get(export_members))
+        .route("/api/members/import", post(upload_members_csv))
         .route("/api/users/logout", get(logout))
         .route("/api/users/login", post(login))
         .route("/api/users/me", get(me));

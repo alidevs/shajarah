@@ -37,10 +37,21 @@
     .hidden {
       display: none;
     }
+
+    .csv-operations {
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .members-table {
+      width: 100%;
+    }
   </style>
   <div dir="rtl" class="main-container">
-    <button onclick="logout()">تسجيل الخروج</button>
-    <span>اهلا، {{ name }}!</span>
+    <div>
+      <button onclick="logout()">تسجيل الخروج</button>
+      <span>اهلا، {{ name }}!</span>
+    </div>
 
     <form autocomplete="off" id="new-member-form" enctype="multipart/form-data" action="#" method="post"
       onsubmit="new_member(event)">
@@ -100,187 +111,202 @@
       <button type="submit" name="submit">إضافة عضو</button>
     </form>
 
-    <table>
-      <tr>
-        <th>المعرف</th>
-        <th>الاسم</th>
-        <th>الاسم الاخير</th>
-        <th>الجنس</th>
-        <th>تاريخ الولادة</th>
-        <th>معرف الاب</th>
-        <th>معرف الام</th>
-        <th>معلومات شخصية</th>
-        <th>الصورة الشخصية</th>
-        <th></th>
-        <th></th>
-      </tr>
-      {% for member in members %}
-      <tr>
-        <td>{{ member.id|e }}</td>
-        <td>{{ member.name|e }}</td>
-        <td>{{ member.last_name|e }}</td>
-        {% if member.gender == "male" %}
-        <td>ذكر</td>
-        {% else if member.gender == "female" %}
-        <td>انثى</td>
-        {% endif %}
-        {% match member.birthday %}
-        {% when Some with (birthday) %}
-        <td>{{ birthday|e }}</td>
-        {% when None %}
-        <td>NULL</td>
-        {% endmatch %}
-        {% match member.father_id %}
-        {% when Some with (father_id) %}
-        <td>{{ father_id|e }}</td>
-        {% when None %}
-        <td>NULL</td>
-        {% endmatch %}
-        {% match member.mother_id %}
-        {% when Some with (mother_id) %}
-        <td>{{ mother_id|e }}</td>
-        {% when None %}
-        <td>NULL</td>
-        {% endmatch %}
-        {% match member.personal_info %}
-        {% when Some with (personal_info) %}
-        <td>
-          <pre><code>{{ personal_info|json|safe }}</code></pre>
-        </td>
-        {% when None %}
-        <td>NULL</td>
-        {% endmatch %}
-        {% match member.image %}
-        {% when Some with (image) %}
-        {% match member.image_type %}
-        {% when Some with (image_type) %}
-        <td style="max-width: 10rem;">
-          <img style="max-width: 100%;" src="data:{{ image_type }};base64, {{ image|bytes_to_base64 }}" />
-        </td>
-        {% when None %}
-        <td>NULL</td>
-        {% endmatch %}
-        {% when None %}
-        <td>NULL</td>
-        {% endmatch %}
-        <td><button onclick="delete_member({{ member.id }})">حذف</button></td>
-        <td dir="rtl" style="text-align: right;">
-          <button onclick="toggle_edit_member_form(this, {{ member.id }})">تعديل</button>
+    <br />
+    <br />
+    <div>
+      <div class="csv-operations">
+        <a href="/api/members/export" download="exported-members.csv">
+          <button>تصدير قائمة العائلة</button>
+        </a>
+        <form autocomplete="off" id="upload-members-form" enctype="multipart/form-data" action="#" method="post"
+          onsubmit="upload_members(event)">
+          <input type="file" name="members_csv" accept="text/csv" />
+          <button type="submit">رفع قائمة العائلة</button>
+        </form>
+      </div>
 
-          <form autocomplete="off" onsubmit="edit_member(event, {{ member.id }})" class="hidden edit-member-form"
-            id="edit-member-form-{{ member.id }}" enctype="multipart/form-data" action="#" method="post">
-            <div>
-              <label for="edit-member-name">الاسم:</label>
-              <input id="edit-member-name" type="text" name="name" value={{ member.name }} />
-            </div>
-            <div>
-              <label for="edit-member-last-name">الاسم الاخير:</label>
-              <input id="edit-member-last-name" type="text" name="last_name" value={{ member.last_name }} />
-            </div>
-            <div>
-              <label for="edit-member-gender">الجنس:</label>
-              <select id="edit-member-gender" name="gender">
-                {% if member.gender == "male" %}
-                <option selected value="male">ذكر</option>
-                <option value="female">انثى</option>
-                {% else if member.gender == "female" %}
-                <option value="male">ذكر</option>
-                <option selected value="female">انثى</option>
-                {% endif %}
-              </select>
-            </div>
-            <div>
-              <label for="edit-member-gender">تاريخ الولادة:</label>
-              {% match member.birthday %}
-              {% when Some with (birthday) %}
-              <input id="edit-member-birthday" type="date" name="birthday" value={{
-                birthday.format("%Y-%m-%d").to_string() }} />
-              {% when None %}
-              <input id="edit-member-birthday" type="date" name="birthday" />
-              {% endmatch %}
-            </div>
-            <div>
-              <label for="edit-member-mother-id">معرف الام:</label>
-              <select id="edit-member-mother-id" name="mother_id">
-                {% if member.mother_id.is_none() %}
-                <option selected value> -- اختر المعرف -- </option>
-                {% else %}
-                <option value> -- اختر المعرف -- </option>
-                {% endif %}
+      <table class="members-table">
+        <tr>
+          <th>المعرف</th>
+          <th>الاسم</th>
+          <th>الاسم الاخير</th>
+          <th>الجنس</th>
+          <th>تاريخ الولادة</th>
+          <th>معرف الاب</th>
+          <th>معرف الام</th>
+          <th>معلومات شخصية</th>
+          <th>الصورة الشخصية</th>
+          <th></th>
+          <th></th>
+        </tr>
+        {% for member in members %}
+        <tr>
+          <td>{{ member.id|e }}</td>
+          <td>{{ member.name|e }}</td>
+          <td>{{ member.last_name|e }}</td>
+          {% if member.gender == "male" %}
+          <td>ذكر</td>
+          {% else if member.gender == "female" %}
+          <td>انثى</td>
+          {% endif %}
+          {% match member.birthday %}
+          {% when Some with (birthday) %}
+          <td>{{ birthday|e }}</td>
+          {% when None %}
+          <td>NULL</td>
+          {% endmatch %}
+          {% match member.father_id %}
+          {% when Some with (father_id) %}
+          <td>{{ father_id|e }}</td>
+          {% when None %}
+          <td>NULL</td>
+          {% endmatch %}
+          {% match member.mother_id %}
+          {% when Some with (mother_id) %}
+          <td>{{ mother_id|e }}</td>
+          {% when None %}
+          <td>NULL</td>
+          {% endmatch %}
+          {% match member.personal_info %}
+          {% when Some with (personal_info) %}
+          <td>
+            <pre><code>{{ personal_info|json|safe }}</code></pre>
+          </td>
+          {% when None %}
+          <td>NULL</td>
+          {% endmatch %}
+          {% match member.image %}
+          {% when Some with (image) %}
+          {% match member.image_type %}
+          {% when Some with (image_type) %}
+          <td style="max-width: 10rem;">
+            <img style="max-width: 100%;" src="data:{{ image_type }};base64, {{ image|bytes_to_base64 }}" />
+          </td>
+          {% when None %}
+          <td>NULL</td>
+          {% endmatch %}
+          {% when None %}
+          <td>NULL</td>
+          {% endmatch %}
+          <td><button onclick="delete_member({{ member.id }})">حذف</button></td>
+          <td dir="rtl" style="text-align: right;">
+            <button onclick="toggle_edit_member_form(this, {{ member.id }})">تعديل</button>
 
-                {% for other_member in members %}
-                {% if other_member.gender == "female" %}
-                {% match member.mother_id %}
-                {% when Some with (mother_id) %}
-                {% if other_member.id == mother_id|deref_i32 %}
-                <option selected value={{other_member.id}}>{{ other_member.id }} {{ other_member.name }}</option>
-                {% else if other_member.id != member.id %}
-                <option value={{other_member.id}}>{{ other_member.id }} {{ other_member.name }}</option>
-                {% endif %}
+            <form autocomplete="off" onsubmit="edit_member(event, {{ member.id }})" class="hidden edit-member-form"
+              id="edit-member-form-{{ member.id }}" enctype="multipart/form-data" action="#" method="post">
+              <div>
+                <label for="edit-member-name">الاسم:</label>
+                <input id="edit-member-name" type="text" name="name" value={{ member.name }} />
+              </div>
+              <div>
+                <label for="edit-member-last-name">الاسم الاخير:</label>
+                <input id="edit-member-last-name" type="text" name="last_name" value={{ member.last_name }} />
+              </div>
+              <div>
+                <label for="edit-member-gender">الجنس:</label>
+                <select id="edit-member-gender" name="gender">
+                  {% if member.gender == "male" %}
+                  <option selected value="male">ذكر</option>
+                  <option value="female">انثى</option>
+                  {% else if member.gender == "female" %}
+                  <option value="male">ذكر</option>
+                  <option selected value="female">انثى</option>
+                  {% endif %}
+                </select>
+              </div>
+              <div>
+                <label for="edit-member-gender">تاريخ الولادة:</label>
+                {% match member.birthday %}
+                {% when Some with (birthday) %}
+                <input id="edit-member-birthday" type="date" name="birthday" value={{
+                  birthday.format("%Y-%m-%d").to_string() }} />
                 {% when None %}
-                {% if other_member.id != member.id %}
-                <option value={{other_member.id}}>{{ other_member.id }} {{ other_member.name }}</option>
-                {% endif %}
-                {% endmatch %}
-                {% endif %}
-                {% endfor %}
-              </select>
-            </div>
-            <div>
-              <label for="edit-member-mother-id">معرف الاب:</label>
-              <select id="edit-member-father-id" name="father_id">
-                {% if member.father_id.is_none() %}
-                <option selected value> -- اختر المعرف -- </option>
-                {% else %}
-                <option value> -- اختر المعرف -- </option>
-                {% endif %}
-
-                {% for other_member in members %}
-                {% if other_member.gender == "male" %}
-                {% match member.father_id %}
-                {% when Some with (father_id) %}
-                {% if other_member.id == father_id|deref_i32 %}
-                <option selected value={{other_member.id}}>{{ other_member.id }} {{ other_member.name }}</option>
-                {% else if other_member.id != member.id %}
-                <option value={{other_member.id}}>{{ other_member.id }} {{ other_member.name }}</option>
-                {% endif %}
-                {% when None %}
-                {% if other_member.id != member.id %}
-                <option value={{other_member.id}}>{{ other_member.id }} {{ other_member.name }}</option>
-                {% endif %}
-                {% endmatch %}
-                {% endif %}
-                {% endfor %}
-              </select>
-            </div>
-            <div>
-              <label for="edit-member-info">المعلومات الشخصية:</label>
-              <div style="display: flex; flex-direction: column;" id="edit-member-key-value-pairs">
-                <!-- Dynamic key-value pairs will be added here -->
-                {% match member.personal_info %}
-                {% when Some with (personal_info) %}
-                {% for (key, value) in personal_info %}
-                <div class="edit-member-pair">
-                  <input class="json-key" value="{{key}}" />
-                  <input class="json-value" value="{{value}}" />
-                  <button type="button" id="edit-member-remove-pair-btn" onclick="removePair(this)">x</button>
-                </div>
-                {% endfor %}
-                {% when None %}
+                <input id="edit-member-birthday" type="date" name="birthday" />
                 {% endmatch %}
               </div>
-              <button type="button" id="edit-member-add-pair-btn">+</button>
-            </div>
-            <div>
-              <label for="edit-member-image">الصورة:</label>
-              <input id="edit-member-image" type="file" name="image" />
-            </div>
-            <button type="submit" name="submit">إرسال التعديل</button>
-          </form>
-        </td>
-      </tr>
-      {% endfor %}
-    </table>
+              <div>
+                <label for="edit-member-mother-id">معرف الام:</label>
+                <select id="edit-member-mother-id" name="mother_id">
+                  {% if member.mother_id.is_none() %}
+                  <option selected value> -- اختر المعرف -- </option>
+                  {% else %}
+                  <option value> -- اختر المعرف -- </option>
+                  {% endif %}
+
+                  {% for other_member in members %}
+                  {% if other_member.gender == "female" %}
+                  {% match member.mother_id %}
+                  {% when Some with (mother_id) %}
+                  {% if other_member.id == mother_id|deref_i32 %}
+                  <option selected value={{other_member.id}}>{{ other_member.id }} {{ other_member.name }}</option>
+                  {% else if other_member.id != member.id %}
+                  <option value={{other_member.id}}>{{ other_member.id }} {{ other_member.name }}</option>
+                  {% endif %}
+                  {% when None %}
+                  {% if other_member.id != member.id %}
+                  <option value={{other_member.id}}>{{ other_member.id }} {{ other_member.name }}</option>
+                  {% endif %}
+                  {% endmatch %}
+                  {% endif %}
+                  {% endfor %}
+                </select>
+              </div>
+              <div>
+                <label for="edit-member-mother-id">معرف الاب:</label>
+                <select id="edit-member-father-id" name="father_id">
+                  {% if member.father_id.is_none() %}
+                  <option selected value> -- اختر المعرف -- </option>
+                  {% else %}
+                  <option value> -- اختر المعرف -- </option>
+                  {% endif %}
+
+                  {% for other_member in members %}
+                  {% if other_member.gender == "male" %}
+                  {% match member.father_id %}
+                  {% when Some with (father_id) %}
+                  {% if other_member.id == father_id|deref_i32 %}
+                  <option selected value={{other_member.id}}>{{ other_member.id }} {{ other_member.name }}</option>
+                  {% else if other_member.id != member.id %}
+                  <option value={{other_member.id}}>{{ other_member.id }} {{ other_member.name }}</option>
+                  {% endif %}
+                  {% when None %}
+                  {% if other_member.id != member.id %}
+                  <option value={{other_member.id}}>{{ other_member.id }} {{ other_member.name }}</option>
+                  {% endif %}
+                  {% endmatch %}
+                  {% endif %}
+                  {% endfor %}
+                </select>
+              </div>
+              <div>
+                <label for="edit-member-info">المعلومات الشخصية:</label>
+                <div style="display: flex; flex-direction: column;" id="edit-member-key-value-pairs">
+                  <!-- Dynamic key-value pairs will be added here -->
+                  {% match member.personal_info %}
+                  {% when Some with (personal_info) %}
+                  {% for (key, value) in personal_info %}
+                  <div class="edit-member-pair">
+                    <input class="json-key" value="{{key}}" />
+                    <input class="json-value" value="{{value}}" />
+                    <button type="button" id="edit-member-remove-pair-btn" onclick="removePair(this)">x</button>
+                  </div>
+                  {% endfor %}
+                  {% when None %}
+                  {% endmatch %}
+                </div>
+                <button type="button" id="edit-member-add-pair-btn">+</button>
+              </div>
+              <div>
+                <label for="edit-member-image">الصورة:</label>
+                <input id="edit-member-image" type="file" name="image" />
+              </div>
+              <button type="submit" name="submit">إرسال التعديل</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </table>
+    </div>
   </div>
 
   <script>
@@ -399,6 +425,21 @@
 
       const res = await fetch(`/api/members/${id}`, {
         method: "PUT",
+        body: formData,
+      });
+
+      if (res.status === 200) {
+        location.reload();
+      }
+    }
+
+    async function upload_members(event) {
+      event.preventDefault();
+      const formElement = event.currentTarget;
+      const formData = new FormData(formElement);
+
+      const res = await fetch("/api/members/import", {
+        method: "POST",
         body: formData,
       });
 

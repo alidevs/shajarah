@@ -794,8 +794,6 @@ impl Node {
             })
             .unwrap_or(DEFAULT_IMAGE);
 
-        log::debug!("image: {:?}", image);
-
         egui::Image::new(image)
             .rounding(Rounding::same(NODE_RADIUS * 2.) * scale)
             .paint_at(ui, image_rect);

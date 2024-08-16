@@ -330,26 +330,44 @@ impl UpdateMemberBuilder {
 }
 
 #[allow(dead_code)]
-#[derive(Debug, sqlx::FromRow)]
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
 struct MemberRow {
+    id: i32,
+    name: String,
+    last_name: String,
+    gender: Gender,
+    birthday: Option<chrono::DateTime<chrono::Utc>>,
+    #[serde(skip)]
+    image: Option<Vec<u8>>,
+    #[serde(skip)]
+    image_type: Option<String>,
+    #[serde(skip)]
+    personal_info: Option<serde_json::Value>,
+    mother_id: Option<i32>,
+    father_id: Option<i32>,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, sqlx::FromRow)]
+struct MemberRowWithParents {
     id: i32,
     name: String,
     gender: Gender,
     birthday: Option<chrono::DateTime<chrono::Utc>>,
     last_name: String,
-    personal_info: Option<serde_json::Value>,
+    image: Option<Vec<u8>>,
+    image_type: Option<String>,
     mother_id: Option<i32>,
+    father_id: Option<i32>,
+    personal_info: Option<serde_json::Value>,
     mother_name: Option<String>,
     mother_gender: Option<Gender>,
     mother_birthday: Option<chrono::DateTime<chrono::Utc>>,
     mother_last_name: Option<String>,
-    father_id: Option<i32>,
     father_name: Option<String>,
     father_gender: Option<Gender>,
     father_birthday: Option<chrono::DateTime<chrono::Utc>>,
     father_last_name: Option<String>,
-    image: Option<Vec<u8>>,
-    image_type: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -368,7 +386,7 @@ pub struct MemberResponse {
 }
 
 impl MemberResponse {
-    fn add_all_children(&mut self, all_members: &[MemberRow]) {
+    fn add_all_children(&mut self, all_members: &[MemberRowWithParents]) {
         self.children = all_members
             .iter()
             .filter(|m| {
