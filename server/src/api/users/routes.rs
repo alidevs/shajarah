@@ -200,7 +200,7 @@ pub async fn create_user(
         r#"
 INSERT INTO users (id, first_name, last_name, username, email, password, role, created_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING id, username, email, role as "role: UserRole"
+RETURNING id, username, email, role
         "#,
     )
     .bind(Uuid::new_v4())
