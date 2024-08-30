@@ -45,9 +45,21 @@ fn setup_fonts(ctx: &egui::Context) {
 
 fn load_family_data(sender: Sender<Message>, ctx: &egui::Context) {
     let ctx = ctx.clone();
-    let request = ehttp::Request::get(
-        "https://shajarah.bksalman.com/api/members", /* FIXME: make this configurable */
-    );
+    // FIXME: make it configurable for desktop application
+    #[cfg(not(target_arch = "wasm32"))]
+    let request = ehttp::Request::get("http://localhost:3001/api/members");
+    #[cfg(target_arch = "wasm32")]
+    let request = {
+        let address = eframe::web_sys::window()
+            .unwrap()
+            .document()
+            .unwrap()
+            .location()
+            .unwrap()
+            .origin()
+            .unwrap();
+        ehttp::Request::get(&format!("{address}/api/members"))
+    };
     ehttp::fetch(request, move |res| match res {
         Ok(res) => {
             if !res.ok {
