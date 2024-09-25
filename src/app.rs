@@ -6,6 +6,7 @@ pub struct App {
     tree: TreeUi,
     message_receiver: Receiver<Message>,
     message_sender: Sender<Message>,
+    backend_address: String,
 }
 
 impl App {
@@ -19,12 +20,19 @@ impl App {
 
         let (sender, receiver) = mpsc::channel();
 
-        load_family_data(sender.clone(), &cc.egui_ctx);
+        #[cfg(not(target_arch = "wasm32"))]
+        let address = "http://localhost:3001";
+
+        #[cfg(target_arch = "wasm32")]
+        let address = "";
+
+        load_family_data(address, sender.clone(), &cc.egui_ctx);
 
         Self {
             tree: TreeUi::new(None),
             message_sender: sender.clone(),
             message_receiver: receiver,
+            backend_address: address.to_string(),
         }
     }
 }
@@ -46,6 +54,13 @@ impl eframe::App for App {
                         }
                     });
                     ui.add_space(16.0);
+
+                    let label = ui.label("backend address:");
+                    egui::TextEdit::singleline(&mut self.backend_address)
+                        .hint_text("http://localhost:3001")
+                        .show(ui)
+                        .response
+                        .labelled_by(label.id);
                 }
 
                 egui::widgets::global_theme_preference_buttons(ui);
@@ -53,16 +68,20 @@ impl eframe::App for App {
                 let reload = ui.button("⟳").on_hover_text("Refresh tree");
 
                 if reload.clicked() {
-                    load_family_data(self.message_sender.clone(), ctx);
+                    load_family_data(&self.backend_address, self.message_sender.clone(), ctx);
                 }
             });
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {
+            if ui.input(|i| i.key_pressed(egui::Key::F5)) {
+                load_family_data(&self.backend_address, self.message_sender.clone(), ctx);
+            }
             self.tree.draw(ui);
         });
 
         if let Ok(message) = self.message_receiver.try_recv() {
+            log::debug!("got {message:?}");
             match message {
                 Message::LoadedFamilyData(root_node) => {
                     self.tree.set_root(Some(root_node));
