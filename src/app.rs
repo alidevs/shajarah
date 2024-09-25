@@ -86,7 +86,7 @@ impl eframe::App for App {
                 Message::LoadedFamilyData(root_node) => {
                     self.tree.set_root(Some(root_node));
                     log::debug!("set the root");
-                    self.tree.layout_tree.layout();
+                    self.tree.layout();
                     log::debug!("laid out the tree");
                 }
             }

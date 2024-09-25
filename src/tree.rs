@@ -8,7 +8,7 @@ use egui::Stroke;
 
 use egui::{
     epaint::CubicBezierShape, include_image, text::LayoutJob, Align, Color32, FontFamily, FontId,
-    PointerButton, Pos2, Rect, Rounding, Sense, Shape, TextFormat, Vec2, Vec2b,
+    PointerButton, Pos2, Rect, Rounding, Sense, Shape, TextFormat, Vec2, Vec2b, Widget,
 };
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
@@ -461,6 +461,10 @@ impl TreeUi {
         self.layout_tree.set_root(self.root.clone());
     }
 
+    pub fn layout(&mut self) {
+        self.layout_tree.layout();
+    }
+
     pub fn draw(&mut self, ui: &mut egui::Ui) {
         ui.style_mut().zoom(self.scale);
 
@@ -687,6 +691,20 @@ impl Node {
             .current_pos(window_pos)
             .show(ui.ctx(), |ui| {
                 ui.with_layout(egui::Layout::top_down(Align::RIGHT), |ui| {
+                    let image = self
+                        .image
+                        .as_ref()
+                        .map(|i| egui::ImageSource::Bytes {
+                            uri: format!("{}-{}", self.id, self.name).into(),
+                            bytes: egui::load::Bytes::from(i.clone()),
+                        })
+                        .unwrap_or(DEFAULT_IMAGE);
+
+                    egui::Image::new(image)
+                        .maintain_aspect_ratio(true)
+                        .show_loading_spinner(true)
+                        .ui(ui);
+
                     let lineage = lineage
                         .iter()
                         .rev()
@@ -796,6 +814,8 @@ impl Node {
 
         egui::Image::new(image)
             .rounding(Rounding::same(NODE_RADIUS * 2.) * scale)
+            .maintain_aspect_ratio(true)
+            .show_loading_spinner(true)
             .paint_at(ui, image_rect);
 
         if response.hovered() {
