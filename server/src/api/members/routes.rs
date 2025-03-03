@@ -7,6 +7,7 @@ use axum::{
 };
 use chrono::{NaiveDate, NaiveTime};
 use indexmap::IndexMap;
+use log::error;
 use serde::Deserialize;
 
 use crate::{
@@ -736,7 +737,7 @@ pub async fn upload_members_csv(
                     .collect::<Result<Vec<MemberRow>, MembersError>>()?;
 
                 for member in members {
-                    let query = sqlx::query(
+                    let Ok(query) = sqlx::query(
                         r#"
                                 UPDATE members
                                 SET name = $1, last_name = $2, gender = $3, birthday = $4, mother_id = $5, father_id = $6
@@ -751,7 +752,10 @@ pub async fn upload_members_csv(
                     .bind(member.mother_id)
                     .bind(member.father_id)
                     .bind(member.id)
-                    .fetch_optional(&state.db_pool).await?;
+                    .fetch_optional(&state.db_pool).await else {
+                        error!("failed to update member: {member:#?}");
+                        continue;
+                    };
 
                     if query.is_none() {
                         sqlx::query(
@@ -766,7 +770,7 @@ pub async fn upload_members_csv(
                         .bind(member.birthday)
                         .bind(member.mother_id)
                         .bind(member.father_id)
-                        .execute(&state.db_pool).await?;
+                        .execute(&state.db_pool).await.ok();
                     }
                 }
             }
