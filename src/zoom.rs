@@ -3,7 +3,7 @@
 use egui::{
     epaint::{PathStroke, Shadow},
     style::{Interaction, ScrollStyle, Spacing, TextCursorStyle, WidgetVisuals, Widgets},
-    FontId, Frame, Margin, Rounding, Stroke, Style, Vec2, Visuals,
+    CornerRadius, FontId, Frame, Margin, Stroke, Style, Vec2, Visuals,
 };
 
 pub trait Zoom {
@@ -17,6 +17,20 @@ impl Zoom for f32 {
     }
 }
 
+impl Zoom for u8 {
+    #[inline(always)]
+    fn zoom(&mut self, zoom: f32) {
+        *self = (*self as f32 * zoom) as u8;
+    }
+}
+
+impl Zoom for i8 {
+    #[inline(always)]
+    fn zoom(&mut self, zoom: f32) {
+        *self = (*self as f32 * zoom) as i8;
+    }
+}
+
 impl Zoom for Vec2 {
     #[inline(always)]
     fn zoom(&mut self, zoom: f32) {
@@ -24,7 +38,7 @@ impl Zoom for Vec2 {
     }
 }
 
-impl Zoom for Rounding {
+impl Zoom for CornerRadius {
     #[inline(always)]
     fn zoom(&mut self, zoom: f32) {
         self.nw.zoom(zoom);
@@ -47,7 +61,8 @@ impl Zoom for Margin {
 impl Zoom for Shadow {
     #[inline(always)]
     fn zoom(&mut self, zoom: f32) {
-        self.offset.zoom(zoom);
+        self.offset[0].zoom(zoom);
+        self.offset[1].zoom(zoom);
         self.blur.zoom(zoom);
         self.spread.zoom(zoom);
     }
@@ -86,7 +101,7 @@ impl Zoom for WidgetVisuals {
     #[inline(always)]
     fn zoom(&mut self, zoom: f32) {
         self.bg_stroke.zoom(zoom);
-        self.rounding.zoom(zoom);
+        self.corner_radius.zoom(zoom);
         self.fg_stroke.zoom(zoom);
         self.expansion.zoom(zoom);
     }
@@ -122,13 +137,13 @@ impl Zoom for Visuals {
     #[inline(always)]
     fn zoom(&mut self, zoom: f32) {
         self.clip_rect_margin.zoom(zoom);
-        self.menu_rounding.zoom(zoom);
+        self.menu_corner_radius.zoom(zoom);
         self.popup_shadow.zoom(zoom);
         self.resize_corner_size.zoom(zoom);
         self.selection.stroke.zoom(zoom);
         self.text_cursor.zoom(zoom);
         self.widgets.zoom(zoom);
-        self.window_rounding.zoom(zoom);
+        self.window_corner_radius.zoom(zoom);
         self.window_shadow.zoom(zoom);
         self.window_stroke.zoom(zoom);
     }
@@ -205,7 +220,7 @@ impl Zoom for Frame {
     fn zoom(&mut self, zoom: f32) {
         self.inner_margin.zoom(zoom);
         self.outer_margin.zoom(zoom);
-        self.rounding.zoom(zoom);
+        self.corner_radius.zoom(zoom);
         self.shadow.zoom(zoom);
         self.stroke.zoom(zoom);
     }

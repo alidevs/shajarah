@@ -3,7 +3,7 @@
 mod app;
 mod tree;
 mod zoom;
-use std::sync::mpsc::Sender;
+use std::sync::{mpsc::Sender, Arc};
 
 pub use app::App;
 use serde::{Deserialize, Serialize};
@@ -26,7 +26,9 @@ fn setup_fonts(ctx: &egui::Context) {
 
     fonts.font_data.insert(
         "arial".to_owned(),
-        egui::FontData::from_static(include_bytes!("../fonts/arial.ttf")),
+        Arc::new(egui::FontData::from_static(include_bytes!(
+            "../fonts/arial.ttf"
+        ))),
     );
 
     fonts

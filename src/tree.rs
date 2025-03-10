@@ -7,8 +7,8 @@ use chrono::{DateTime, Utc};
 use egui::Stroke;
 
 use egui::{
-    epaint::CubicBezierShape, include_image, text::LayoutJob, Align, Color32, FontFamily, FontId,
-    PointerButton, Pos2, Rect, Rounding, Sense, Shape, TextFormat, Vec2, Vec2b, Widget,
+    epaint::CubicBezierShape, include_image, text::LayoutJob, Align, Color32, CornerRadius,
+    FontFamily, FontId, PointerButton, Pos2, Rect, Sense, Shape, TextFormat, Vec2, Vec2b, Widget,
 };
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 use crate::{zoom::Zoom, Gender};
 
 const DEFAULT_IMAGE: egui::ImageSource<'static> = include_image!("../assets/avatar.png");
-const NODE_RADIUS: f32 = 30.;
+const NODE_RADIUS: u8 = 30;
 const NODE_TEXT_PADDING: f32 = 10.;
 const MAX_SCALE: f32 = 5.0;
 const MIN_SCALE: f32 = 0.2;
@@ -208,7 +208,7 @@ impl LayoutTree {
 
                 // TODO: handle mother_idx as well
                 self[node].y = if let Some(parent) = self[node].father_idx {
-                    self[parent].y + NODE_RADIUS
+                    self[parent].y + NODE_RADIUS as f32
                 } else {
                     0.0
                 }; //  + self[node].data.top_space();
@@ -229,8 +229,9 @@ impl LayoutTree {
     fn center_nodes_between(&mut self, left: usize, right: usize) {
         let num_gaps = self[right].order - self[left].order;
 
-        let space_per_gap =
-            ((self[right].x - NODE_RADIUS) - (self[left].x + NODE_RADIUS)) / (num_gaps as f32);
+        let space_per_gap = ((self[right].x - NODE_RADIUS as f32)
+            - (self[left].x + NODE_RADIUS as f32))
+            / (num_gaps as f32);
 
         for (i, sibling) in self.siblings_between(left, right).into_iter().enumerate() {
             let i = i + 1;
@@ -241,7 +242,7 @@ impl LayoutTree {
             // TODO: Have some kind of `move_node` method that checks things like this?
             let new_x = max(
                 old_x,
-                (self[left].x + NODE_RADIUS) + space_per_gap * (i as f32),
+                (self[left].x + NODE_RADIUS as f32) + space_per_gap * (i as f32),
             );
             let diff = new_x - old_x;
 
@@ -285,10 +286,10 @@ impl LayoutTree {
         for node in self.post_order(root) {
             if self[node].is_leaf() {
                 self[node].x = if let Some(sibling) = self.previous_sibling(node) {
-                    self[sibling].x + NODE_RADIUS
+                    self[sibling].x + NODE_RADIUS as f32
                 } else {
                     0.0
-                } + NODE_RADIUS;
+                } + NODE_RADIUS as f32;
             } else {
                 let mid = {
                     let first = self[*self[node]
@@ -306,7 +307,8 @@ impl LayoutTree {
                 };
 
                 if let Some(sibling) = self.previous_sibling(node) {
-                    self[node].x = (self[sibling].x + NODE_RADIUS) + (self[node].x - NODE_RADIUS);
+                    self[node].x = (self[sibling].x + NODE_RADIUS as f32)
+                        + (self[node].x - NODE_RADIUS as f32);
                     self[node].mod_ = self[node].x - mid;
                 } else {
                     self[node].x = mid;
@@ -401,11 +403,11 @@ fn max<T: std::cmp::PartialOrd>(l: T, r: T) -> T {
 }
 
 fn left_contour(tree: &LayoutTree, node: usize) -> HashMap<usize, f32> {
-    contour(tree, node, min, |n| n.x - NODE_RADIUS)
+    contour(tree, node, min, |n| n.x - NODE_RADIUS as f32)
 }
 
 fn right_contour(tree: &LayoutTree, node: usize) -> HashMap<usize, f32> {
-    contour(tree, node, max, |n| n.x + NODE_RADIUS)
+    contour(tree, node, max, |n| n.x + NODE_RADIUS as f32)
 }
 
 fn contour<C, E>(tree: &LayoutTree, node: usize, cmp: C, edge: E) -> HashMap<usize, f32>
@@ -505,7 +507,7 @@ impl TreeUi {
                     self.offset = Vec2::new(
                         (root_coords.x + (center.x - root_coords.x))
                             - ((self.layout_tree.total_width() * 5.) / 2.)
-                            - NODE_RADIUS * 2.,
+                            - NODE_RADIUS as f32 * 2.,
                         center.y,
                     );
                 }
@@ -670,7 +672,8 @@ impl Node {
             }
         }
 
-        let window_pos = coords + Vec2::new(NODE_RADIUS * 1.2, -(NODE_RADIUS / 2.)) * scale;
+        let window_pos =
+            coords + Vec2::new(NODE_RADIUS as f32 * 1.2, -(NODE_RADIUS as f32 / 2.)) * scale;
 
         if background_clicked && self.window_is_open {
             self.window_is_open = false;
@@ -781,14 +784,14 @@ impl Node {
         let galley_c = galley.clone();
 
         let text_x =
-            (coords.x - (NODE_RADIUS * scale + galley.size().x)) - NODE_TEXT_PADDING * scale;
+            (coords.x - (NODE_RADIUS as f32 * scale + galley.size().x)) - NODE_TEXT_PADDING * scale;
         let text_y = coords.y - (galley.size().y / 2.);
 
         painter.galley(Pos2::new(text_x, text_y), galley, Color32::WHITE);
 
         let image_rect = Rect::from_center_size(
             coords,
-            (Vec2::splat(NODE_RADIUS * 2.) * scale) + Vec2::splat(1.0), // add one pixel to cover the whole background circle
+            (Vec2::splat(NODE_RADIUS as f32 * 2.) * scale) + Vec2::splat(1.0), // add one pixel to cover the whole background circle
         );
 
         let response = ui.allocate_rect(image_rect, Sense::click());
@@ -798,7 +801,7 @@ impl Node {
         }
 
         let painter = ui.painter();
-        painter.circle_filled(coords, NODE_RADIUS * scale, Color32::LIGHT_BLUE);
+        painter.circle_filled(coords, NODE_RADIUS as f32 * scale, Color32::LIGHT_BLUE);
 
         #[cfg(feature = "debug-ui")]
         painter.rect_stroke(image_rect, Rounding::ZERO, Stroke::new(2.0, Color32::GREEN));
@@ -813,14 +816,14 @@ impl Node {
             .unwrap_or(DEFAULT_IMAGE);
 
         egui::Image::new(image)
-            .rounding(Rounding::same(NODE_RADIUS * 2.) * scale)
+            .corner_radius(CornerRadius::same(NODE_RADIUS * 2) * scale)
             .maintain_aspect_ratio(true)
             .show_loading_spinner(true)
             .paint_at(ui, image_rect);
 
         if response.hovered() {
             let painter = ui.painter();
-            painter.circle_stroke(coords, NODE_RADIUS * scale, stroke);
+            painter.circle_stroke(coords, NODE_RADIUS as f32 * scale, stroke);
         }
 
         #[cfg(feature = "debug-ui")]
