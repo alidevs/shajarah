@@ -139,7 +139,7 @@ async fn main() {
         .with_state(app_state);
     let address = cli
         .address
-        .unwrap_or(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 8080));
+        .unwrap_or(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 3030));
 
     let listener = tokio::net::TcpListener::bind(address).await.unwrap();
 

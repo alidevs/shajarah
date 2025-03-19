@@ -1,4 +1,4 @@
-use std::{io::Cursor, sync::Arc};
+use std::sync::Arc;
 
 use axum::{
     extract::{Multipart, Path, State},
@@ -761,10 +761,11 @@ pub async fn upload_members_csv(
                     if query.is_none() {
                         sqlx::query(
                             r#"
-                                INSERT INTO members (name, last_name, gender, birthday, mother_id, father_id)
-                                VALUES ($1, $2, $3, $4, $5, $6)
+                                INSERT INTO members (id, name, last_name, gender, birthday, mother_id, father_id)
+                                VALUES ($1, $2, $3, $4, $5, $6, $7)
                                 "#,
                         )
+                        .bind(member.id)
                         .bind(&member.name)
                         .bind(&member.last_name)
                         .bind(member.gender)
