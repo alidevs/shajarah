@@ -10,6 +10,10 @@ use egui::{
     epaint::CubicBezierShape, include_image, text::LayoutJob, Align, Color32, CornerRadius,
     FontFamily, FontId, PointerButton, Pos2, Rect, Sense, Shape, TextFormat, Vec2, Vec2b, Widget,
 };
+
+#[cfg(feature = "debug-ui")]
+use egui::StrokeKind;
+
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
@@ -17,6 +21,7 @@ use crate::{zoom::Zoom, Gender};
 
 const DEFAULT_IMAGE: egui::ImageSource<'static> = include_image!("../assets/avatar.png");
 const NODE_RADIUS: u8 = 30;
+const NODE_PADDING: f32 = 30.;
 const NODE_TEXT_PADDING: f32 = 10.;
 const MAX_SCALE: f32 = 5.0;
 const MIN_SCALE: f32 = 0.2;
@@ -49,6 +54,7 @@ impl LayoutTree {
             x: 0.,
             y: 0.,
             mod_: 0.,
+            collapsed: root.collapsed,
         });
 
         let mut queue = std::collections::VecDeque::new();
@@ -86,6 +92,7 @@ impl LayoutTree {
                     x: 0.,
                     y: 0.,
                     mod_: 0.,
+                    collapsed: child.collapsed,
                 });
 
                 queue.push_back((index, child));
@@ -103,6 +110,14 @@ impl LayoutTree {
         }
     }
 
+    pub fn reset_positions(&mut self) {
+        for node in &mut self.0 {
+            node.x = 0.;
+            node.y = 0.;
+            node.mod_ = 0.;
+        }
+    }
+
     pub fn root(&self) -> Option<usize> {
         if self.0.is_empty() {
             None
@@ -116,7 +131,9 @@ impl LayoutTree {
         let mut post_order = Vec::new();
 
         while let Some(node) = breadth_first.pop() {
-            breadth_first.extend_from_slice(&self[node].children);
+            if !self[node].collapsed {
+                breadth_first.extend_from_slice(&self[node].children);
+            }
             post_order.push(node);
         }
 
@@ -188,7 +205,9 @@ impl LayoutTree {
 
         while index < breadth_first.len() {
             let node = breadth_first[index];
-            breadth_first.extend_from_slice(&self[node].children);
+            if !self[node].collapsed {
+                breadth_first.extend_from_slice(&self[node].children);
+            }
             index += 1;
         }
 
@@ -208,7 +227,7 @@ impl LayoutTree {
 
                 // TODO: handle mother_idx as well
                 self[node].y = if let Some(parent) = self[node].father_idx {
-                    self[parent].y + NODE_RADIUS as f32
+                    self[parent].y + NODE_RADIUS as f32 * 2. + NODE_PADDING * 2.
                 } else {
                     0.0
                 }; //  + self[node].data.top_space();
@@ -217,7 +236,9 @@ impl LayoutTree {
                     max = self[node].y;
                 }
 
-                next_row.extend_from_slice(&self[node].children);
+                if !self[node].collapsed {
+                    next_row.extend_from_slice(&self[node].children);
+                }
             }
 
             for node in &row {
@@ -240,7 +261,7 @@ impl LayoutTree {
             // HINT: We traverse the tree in post-order so we should never be moving anything to the
             //       left.
             // TODO: Have some kind of `move_node` method that checks things like this?
-            let new_x = max(
+            let new_x = f32::max(
                 old_x,
                 (self[left].x + NODE_RADIUS as f32) + space_per_gap * (i as f32),
             );
@@ -268,12 +289,18 @@ impl LayoutTree {
             let left_node_contour = right_contour(self, left);
             let mut shift = 0.0;
 
+            log::debug!(
+                "left contour: {right_node_contour:#?}, right contour: {left_node_contour:#?}"
+            );
+
             for depth in self[right].depth..=max_depth(&right_node_contour, &left_node_contour) {
                 let gap = right_node_contour[&depth] - left_node_contour[&depth];
                 if gap + shift < 0.0 {
                     shift = -gap;
                 }
             }
+
+            log::debug!("left: {left}, right: {right}, shift: {shift}");
 
             self[right].x += shift;
             self[right].mod_ += shift;
@@ -286,10 +313,10 @@ impl LayoutTree {
         for node in self.post_order(root) {
             if self[node].is_leaf() {
                 self[node].x = if let Some(sibling) = self.previous_sibling(node) {
-                    self[sibling].x + NODE_RADIUS as f32
+                    self[sibling].x + NODE_RADIUS as f32 * 2. + NODE_PADDING * 2.
                 } else {
                     0.0
-                } + NODE_RADIUS as f32;
+                };
             } else {
                 let mid = {
                     let first = self[*self[node]
@@ -307,8 +334,7 @@ impl LayoutTree {
                 };
 
                 if let Some(sibling) = self.previous_sibling(node) {
-                    self[node].x = (self[sibling].x + NODE_RADIUS as f32)
-                        + (self[node].x - NODE_RADIUS as f32);
+                    self[node].x = self[sibling].x + NODE_RADIUS as f32 * 2. + NODE_PADDING * 2.;
                     self[node].mod_ = self[node].x - mid;
                 } else {
                     self[node].x = mid;
@@ -326,9 +352,12 @@ impl LayoutTree {
             .fold(None, |acc, curr| {
                 let acc = acc.unwrap_or(f32::INFINITY);
                 let curr = *curr;
+                // log::debug!("curr: {curr}, acc: {acc}");
                 Some(if curr < acc { curr } else { acc })
             })
             .unwrap_or(0.0);
+
+        // log::debug!("shift: {shift}");
 
         self[root].x += shift;
         self[root].mod_ += shift;
@@ -349,6 +378,9 @@ impl LayoutTree {
 
     pub fn layout(&mut self) {
         if let Some(root) = self.root() {
+            self.reset_positions();
+            // log::debug!("laying out the tree");
+
             self.initialize_y(root);
             self.initialize_x(root);
 
@@ -361,14 +393,8 @@ impl LayoutTree {
         self.0.iter().find(|n| n.id == id)
     }
 
-    pub fn total_width(&self) -> f32 {
-        self.0
-            .iter()
-            .fold(0.0, |acc, n| if n.x > acc { n.x } else { acc })
-            - self
-                .0
-                .iter()
-                .fold(0.0, |acc, n| if n.x < acc { n.x } else { acc })
+    pub fn get_mut(&mut self, id: i32) -> Option<&mut LayoutNode> {
+        self.0.iter_mut().find(|n| n.id == id)
     }
 }
 
@@ -386,28 +412,12 @@ impl std::ops::IndexMut<usize> for LayoutTree {
     }
 }
 
-fn min<T: std::cmp::PartialOrd>(l: T, r: T) -> T {
-    if l < r {
-        l
-    } else {
-        r
-    }
-}
-
-fn max<T: std::cmp::PartialOrd>(l: T, r: T) -> T {
-    if l > r {
-        l
-    } else {
-        r
-    }
-}
-
 fn left_contour(tree: &LayoutTree, node: usize) -> HashMap<usize, f32> {
-    contour(tree, node, min, |n| n.x - NODE_RADIUS as f32)
+    contour(tree, node, f32::min, |n| n.x)
 }
 
 fn right_contour(tree: &LayoutTree, node: usize) -> HashMap<usize, f32> {
-    contour(tree, node, max, |n| n.x + NODE_RADIUS as f32)
+    contour(tree, node, f32::max, |n| n.x)
 }
 
 fn contour<C, E>(tree: &LayoutTree, node: usize, cmp: C, edge: E) -> HashMap<usize, f32>
@@ -429,7 +439,10 @@ where
         let mod_ = mod_ + tree[node].mod_;
 
         contour.insert(depth, new);
-        stack.extend(tree[node].children.iter().map(|c| (mod_, *c)));
+
+        if !tree[node].collapsed {
+            stack.extend(tree[node].children.iter().map(|c| (mod_, *c)));
+        }
     }
 
     contour
@@ -476,6 +489,9 @@ impl TreeUi {
 
         if bg_rect.dragged_by(PointerButton::Primary) {
             self.pan(bg_rect.drag_delta());
+
+            #[cfg(feature = "debug-ui")]
+            log::debug!("new offset: {:?}", self.offset);
         }
 
         let background_clicked = bg_rect.clicked_by(PointerButton::Primary);
@@ -483,14 +499,21 @@ impl TreeUi {
         if let Some(hover_pos) = ui.ctx().input(|i| i.pointer.hover_pos()) {
             if bg_rect.hovered() {
                 let zoom_delta = ui.ctx().input(|i| i.zoom_delta());
-                let prev_scale = self.scale;
-                let new_scale = (prev_scale * zoom_delta).clamp(MIN_SCALE, MAX_SCALE);
 
-                self.scale(new_scale);
-                let scale_factor = self.scale / prev_scale;
-                let pos = self.offset - hover_pos.to_vec2();
+                // there is change
+                if zoom_delta != 1. {
+                    let prev_scale = self.scale;
+                    let new_scale = (prev_scale * zoom_delta).clamp(MIN_SCALE, MAX_SCALE);
 
-                self.offset = (pos * scale_factor) + hover_pos.to_vec2();
+                    self.scale(new_scale);
+                    let scale_factor = self.scale / prev_scale;
+                    let pos = self.offset - hover_pos.to_vec2();
+
+                    self.offset = (pos * scale_factor) + hover_pos.to_vec2();
+
+                    #[cfg(feature = "debug-ui")]
+                    log::debug!("new offset: {:?}", self.offset);
+                }
             }
         }
 
@@ -499,26 +522,25 @@ impl TreeUi {
                 if let Some(layout_root) = self.layout_tree.root() {
                     let root_coords = &self.layout_tree[layout_root];
                     let center = viewport.center().to_vec2();
-                    log::debug!("{center}");
+                    // log::debug!("{center}");
 
                     #[cfg(feature = "debug-ui")]
                     log::debug!("root_coords: {root_coords:?}");
 
-                    self.offset = Vec2::new(
-                        (root_coords.x + (center.x - root_coords.x))
-                            - ((self.layout_tree.total_width() * 5.) / 2.)
-                            - NODE_RADIUS as f32 * 2.,
-                        center.y,
-                    );
+                    self.offset = Vec2::new(-root_coords.x + center.x, center.y);
+
+                    #[cfg(feature = "debug-ui")]
+                    log::debug!("offset: {:?}", self.offset);
                 }
+
                 self.centered = true;
             }
 
             root.draw(
                 ui,
-                self.offset.to_pos2(),
+                &mut self.offset,
                 self.scale,
-                &self.layout_tree,
+                &mut self.layout_tree,
                 vec![],
                 background_clicked,
             );
@@ -570,17 +592,25 @@ pub struct LayoutNode {
 
     pub x: f32,
     pub y: f32,
+
+    /// How much to shift this node's children by
     mod_: f32,
+
+    collapsed: bool,
 }
 
 impl LayoutNode {
     pub fn is_leaf(&self) -> bool {
-        self.children.is_empty()
+        self.children.is_empty() | self.collapsed
     }
 
     pub fn is_root(&self) -> bool {
         self.mother_idx.is_none() && self.father_idx.is_none()
     }
+}
+
+fn yes() -> bool {
+    true
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -599,6 +629,9 @@ pub struct Node {
     /// used for displaying or hiding the member info window
     #[serde(skip)]
     window_is_open: bool,
+
+    #[serde(default = "yes")]
+    collapsed: bool,
 }
 
 impl Node {
@@ -609,19 +642,19 @@ impl Node {
     pub fn draw(
         &mut self,
         ui: &mut egui::Ui,
-        offset: Pos2,
+        offset: &mut Vec2,
         scale: f32,
-        layout_tree: &LayoutTree,
+        layout_tree: &mut LayoutTree,
         mut lineage: Vec<SimpleNode>,
         background_clicked: bool,
     ) {
         let stroke = ui.visuals().widgets.noninteractive.fg_stroke;
-        let coords = layout_tree
+        let layout_node = layout_tree
             .get(self.id)
             .expect("probably didn't update the layout tree");
         let coords = Pos2::new(
-            offset.x + (coords.x * 5.) * scale,
-            offset.y + (coords.y * 5.) * scale,
+            offset.x + layout_node.x * scale,
+            offset.y + layout_node.y * scale,
         );
 
         let default_text_style = egui::style::default_text_styles()
@@ -631,44 +664,83 @@ impl Node {
 
         let painter = ui.painter();
 
+        let mut job = LayoutJob::default();
+        job.append(
+            &RESHAPER
+                .reshape(self.name.clone())
+                .chars()
+                .rev()
+                .collect::<String>(),
+            0.0,
+            TextFormat {
+                font_id: default_text_style.clone(),
+                color: ui.visuals().text_color(),
+                ..Default::default()
+            },
+        );
+        let galley = painter.layout_job(job);
+
         #[cfg(feature = "debug-ui")]
-        {
-            log::debug!("coords: {coords:?}");
-        }
+        let galley_c = galley.clone();
 
-        for child in self.children.iter() {
-            let child_coords = layout_tree
-                .get(child.id)
-                .expect("probably didn't update the layout tree");
-            let child_coords = Pos2::new(
-                offset.x + (child_coords.x * 5.) * scale,
-                offset.y + (child_coords.y * 5.) * scale,
-            );
+        let text_coords = Pos2::new(
+            coords.x - galley.size().x / 2.,
+            coords.y + NODE_RADIUS as f32 * scale,
+        );
+        let text_size = galley.size();
 
-            if child_coords.x == coords.x {
-                painter.line_segment([child_coords, coords], stroke);
-            } else {
-                let control_point1 = Pos2::new(coords.x, child_coords.y);
+        painter.galley(text_coords, galley, Color32::WHITE);
 
-                #[cfg(feature = "debug-ui")]
-                painter.circle_filled(control_point1, 10., Color32::WHITE);
+        // #[cfg(feature = "debug-ui")]
+        // {
+        //     log::debug!("coords: {coords:?}");
+        // }
 
-                let control_point2 = Pos2::new(child_coords.x, coords.y);
+        if !self.collapsed {
+            for child in self.children.iter() {
+                let child_coords = layout_tree
+                    .get(child.id)
+                    .expect("probably didn't update the layout tree");
+                let child_coords = Pos2::new(
+                    offset.x + child_coords.x * scale,
+                    offset.y + child_coords.y * scale,
+                );
 
-                #[cfg(feature = "debug-ui")]
-                painter.circle_filled(control_point2, 10., Color32::YELLOW);
+                if child_coords.x == coords.x {
+                    painter.line_segment(
+                        [
+                            child_coords,
+                            text_coords + Vec2::new(text_size.x / 2., text_size.y),
+                        ],
+                        stroke,
+                    );
+                } else {
+                    let control_point1 =
+                        Pos2::new(text_coords.x + text_size.x / 2., child_coords.y);
 
-                painter.add(Shape::CubicBezier(CubicBezierShape::from_points_stroke(
-                    [
-                        Pos2::new(coords.x, coords.y),
-                        control_point1,
-                        control_point2,
-                        Pos2::new(child_coords.x, child_coords.y),
-                    ],
-                    false,
-                    Color32::TRANSPARENT,
-                    stroke,
-                )));
+                    #[cfg(feature = "debug-ui")]
+                    painter.circle_filled(control_point1, 10., Color32::WHITE);
+
+                    let control_point2 = Pos2::new(child_coords.x, text_coords.y + text_size.y);
+
+                    #[cfg(feature = "debug-ui")]
+                    painter.circle_filled(control_point2, 10., Color32::YELLOW);
+
+                    painter.add(Shape::CubicBezier(CubicBezierShape::from_points_stroke(
+                        [
+                            Pos2::new(
+                                text_coords.x + text_size.x / 2.,
+                                text_coords.y + text_size.y,
+                            ),
+                            control_point1,
+                            control_point2,
+                            Pos2::new(child_coords.x, child_coords.y),
+                        ],
+                        false,
+                        Color32::TRANSPARENT,
+                        stroke,
+                    )));
+                }
             }
         }
 
@@ -707,6 +779,11 @@ impl Node {
                         .maintain_aspect_ratio(true)
                         .show_loading_spinner(true)
                         .ui(ui);
+
+                    #[cfg(feature = "debug-ui")]
+                    ui.label(format!("{{ x: {}, y: {} }}", layout_node.x, layout_node.y));
+
+                    ui.label(self.id.to_string());
 
                     let lineage = lineage
                         .iter()
@@ -752,42 +829,18 @@ impl Node {
 
         lineage.push(self.clone().into());
 
-        for child in self.children.iter_mut() {
-            child.draw(
-                ui,
-                offset,
-                scale,
-                layout_tree,
-                lineage.clone(),
-                background_clicked,
-            );
+        if !self.collapsed {
+            for child in self.children.iter_mut() {
+                child.draw(
+                    ui,
+                    offset,
+                    scale,
+                    layout_tree,
+                    lineage.clone(),
+                    background_clicked,
+                );
+            }
         }
-        let painter = ui.painter();
-
-        let mut job = LayoutJob::default();
-        job.append(
-            &RESHAPER
-                .reshape(self.name.clone())
-                .chars()
-                .rev()
-                .collect::<String>(),
-            0.0,
-            TextFormat {
-                font_id: default_text_style.clone(),
-                color: ui.visuals().text_color(),
-                ..Default::default()
-            },
-        );
-        let galley = painter.layout_job(job);
-
-        #[cfg(feature = "debug-ui")]
-        let galley_c = galley.clone();
-
-        let text_x =
-            (coords.x - (NODE_RADIUS as f32 * scale + galley.size().x)) - NODE_TEXT_PADDING * scale;
-        let text_y = coords.y - (galley.size().y / 2.);
-
-        painter.galley(Pos2::new(text_x, text_y), galley, Color32::WHITE);
 
         let image_rect = Rect::from_center_size(
             coords,
@@ -795,8 +848,30 @@ impl Node {
         );
 
         let response = ui.allocate_rect(image_rect, Sense::click());
-        let clicked = response.clicked();
-        if clicked {
+
+        if response.double_clicked() {
+            self.collapsed = !self.collapsed;
+            layout_tree
+                .get_mut(self.id)
+                .expect("node should exist in layout tree")
+                .collapsed = self.collapsed;
+
+            let prev_x = layout_tree
+                .get(self.id)
+                .expect("node should exist in layout tree")
+                .x;
+
+            layout_tree.layout();
+
+            let new_x = layout_tree
+                .get(self.id)
+                .expect("node should exist in layout tree")
+                .x;
+
+            offset.x -= (new_x - prev_x) * scale;
+        }
+
+        if response.clicked() {
             self.window_is_open = !self.window_is_open;
         }
 
@@ -804,7 +879,12 @@ impl Node {
         painter.circle_filled(coords, NODE_RADIUS as f32 * scale, Color32::LIGHT_BLUE);
 
         #[cfg(feature = "debug-ui")]
-        painter.rect_stroke(image_rect, Rounding::ZERO, Stroke::new(2.0, Color32::GREEN));
+        painter.rect_stroke(
+            image_rect,
+            CornerRadius::ZERO,
+            Stroke::new(2.0, Color32::GREEN),
+            StrokeKind::Middle,
+        );
 
         let image = self
             .image
@@ -816,7 +896,7 @@ impl Node {
             .unwrap_or(DEFAULT_IMAGE);
 
         egui::Image::new(image)
-            .corner_radius(CornerRadius::same(NODE_RADIUS * 2) * scale)
+            .corner_radius(CornerRadius::same(NODE_RADIUS) * scale)
             .maintain_aspect_ratio(true)
             .show_loading_spinner(true)
             .paint_at(ui, image_rect);
@@ -829,11 +909,15 @@ impl Node {
         #[cfg(feature = "debug-ui")]
         painter.rect_stroke(
             Rect {
-                min: Pos2::new(text_x, text_y),
-                max: Pos2::new(text_x + galley_c.size().x, text_y + galley_c.size().y),
+                min: Pos2::new(text_coords.x, text_coords.y),
+                max: Pos2::new(
+                    text_coords.x + galley_c.size().x,
+                    text_coords.y + galley_c.size().y,
+                ),
             },
-            Rounding::ZERO,
+            CornerRadius::ZERO,
             Stroke::new(1., Color32::GREEN),
+            StrokeKind::Middle,
         );
     }
 }
