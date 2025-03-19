@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{io::Cursor, sync::Arc};
 
 use axum::{
     extract::{Multipart, Path, State},
@@ -717,14 +717,14 @@ pub async fn upload_members_csv(
     while let Some(field) = multipart.next_field().await.unwrap() {
         match field.name() {
             Some("members_csv") => {
-                let file_data = field.bytes().await.map_err(|e| {
+                let file_data = field.text().await.map_err(|e| {
                     log::error!("{e}");
                     MembersError::SomethingWentWrong
                 })?;
 
-                let file_data = file_data.to_vec();
-
-                let mut csv_reader = csv::Reader::from_reader(file_data.as_slice());
+                let mut csv_reader = csv::ReaderBuilder::new()
+                    .delimiter(b',')
+                    .from_reader(file_data.as_bytes());
 
                 let members: Vec<MemberRow> = csv_reader
                     .deserialize::<MemberRow>()
@@ -737,6 +737,7 @@ pub async fn upload_members_csv(
                     .collect::<Result<Vec<MemberRow>, MembersError>>()?;
 
                 for member in members {
+                    log::debug!("adding member: {member:?}");
                     let Ok(query) = sqlx::query(
                         r#"
                                 UPDATE members
