@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use axum::{
-    extract::{Multipart, Path, State},
+    extract::{Multipart, Path, Query, State},
     response::IntoResponse,
     Json,
 };
@@ -97,42 +97,101 @@ LEFT JOIN
     Ok(Json(root))
 }
 
+#[derive(Deserialize)]
+pub struct FlatMembersParams {
+    pub query: Option<String>,
+    pub page: Option<usize>,
+    pub per_page: Option<usize>,
+}
+
 /// Get family members as a flat vector
 #[axum::debug_handler]
 pub async fn get_members_flat(
     State(state): State<Arc<InnerAppState>>,
+    Query(params): Query<FlatMembersParams>,
 ) -> anyhow::Result<Json<Vec<MemberResponseBrief>>, MembersError> {
-    let recs: Vec<MemberRowWithParents> = sqlx::query_as(
-        r#"
-SELECT
-    m.id,
-    m.name,
-    m.gender,
-    m.birthday,
-    m.last_name,
-    m.image,
-    m.image_type,
-    m.personal_info,
-    mother.id as mother_id,
-    mother.name AS mother_name,
-    mother.gender AS mother_gender,
-    mother.birthday AS mother_birthday,
-    mother.last_name AS mother_last_name,
-    father.id as father_id,
-    father.name AS father_name,
-    father.gender AS father_gender,
-    father.birthday AS father_birthday,
-    father.last_name AS father_last_name
-FROM
-    members m
-LEFT JOIN
-    members mother ON m.mother_id = mother.id
-LEFT JOIN
-    members father ON m.father_id = father.id;
-    "#,
-    )
-    .fetch_all(&state.db_pool)
-    .await?;
+    let per_page = params.per_page.unwrap_or(10);
+
+    let recs: Vec<MemberRowWithParents> = if let Some(search_term) = params.query {
+        sqlx::query_as(
+            r#"
+        SELECT
+            m.id,
+            m.name,
+            m.gender,
+            m.birthday,
+            m.last_name,
+            m.image,
+            m.image_type,
+            m.personal_info,
+            mother.id as mother_id,
+            mother.name AS mother_name,
+            mother.gender AS mother_gender,
+            mother.birthday AS mother_birthday,
+            mother.last_name AS mother_last_name,
+            father.id as father_id,
+            father.name AS father_name,
+            father.gender AS father_gender,
+            father.birthday AS father_birthday,
+            father.last_name AS father_last_name
+        FROM
+            members m
+        LEFT JOIN
+            members mother ON m.mother_id = mother.id
+        LEFT JOIN
+            members father ON m.father_id = father.id
+        WHERE
+        to_tsvector(m.name) @@ websearch_to_tsquery($1)
+        ORDER BY
+            m.id, m.name ASC
+        OFFSET $2
+        LIMIT $3;
+            "#,
+        )
+        .bind(search_term)
+        .bind((params.page.unwrap_or(0) * per_page).saturating_sub(1) as i32)
+        .bind(per_page as i32)
+        .fetch_all(&state.db_pool)
+        .await?
+    } else {
+        sqlx::query_as(
+            r#"
+        SELECT
+            m.id,
+            m.name,
+            m.gender,
+            m.birthday,
+            m.last_name,
+            m.image,
+            m.image_type,
+            m.personal_info,
+            mother.id as mother_id,
+            mother.name AS mother_name,
+            mother.gender AS mother_gender,
+            mother.birthday AS mother_birthday,
+            mother.last_name AS mother_last_name,
+            father.id as father_id,
+            father.name AS father_name,
+            father.gender AS father_gender,
+            father.birthday AS father_birthday,
+            father.last_name AS father_last_name
+        FROM
+            members m
+        LEFT JOIN
+            members mother ON m.mother_id = mother.id
+        LEFT JOIN
+            members father ON m.father_id = father.id
+        ORDER BY
+            m.id, m.name ASC
+        OFFSET $1
+        LIMIT $2;
+            "#,
+        )
+        .bind((params.page.unwrap_or(0) * per_page).saturating_sub(1) as i32)
+        .bind(per_page as i32)
+        .fetch_all(&state.db_pool)
+        .await?
+    };
 
     if recs.is_empty() {
         return Err(MembersError::NoMembers);

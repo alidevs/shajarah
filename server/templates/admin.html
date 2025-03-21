@@ -100,7 +100,6 @@
       <div style="display: flex; flex-direction: column; align-items: start;">
         <label for="new-member-info">معلومات شخصية:</label>
         <div id="new-member-key-value-pairs">
-          <!-- Dynamic key-value pairs will be added here -->
         </div>
         <button type="button" id="new-member-add-pair-btn">+</button>
       </div>
@@ -124,6 +123,14 @@
           <button type="submit">رفع قائمة العائلة</button>
         </form>
       </div>
+
+      {% match query %}
+      {% when Some with (query) %}
+      <input id="search-bar" type="text" value="{{ query }}" />
+      {% when None %}
+      <input id="search-bar" type="text" />
+      {% endmatch %}
+      <button id="search-button" onclick="search()">ابحث</button>
 
       <table class="members-table">
         <tr>
@@ -281,7 +288,6 @@
               <div>
                 <label for="edit-member-info">المعلومات الشخصية:</label>
                 <div style="display: flex; flex-direction: column;" id="edit-member-key-value-pairs">
-                  <!-- Dynamic key-value pairs will be added here -->
                   {% match member.personal_info %}
                   {% when Some with (personal_info) %}
                   {% for (key, value) in personal_info %}
@@ -306,10 +312,70 @@
         </tr>
         {% endfor %}
       </table>
+
+      <button onclick="prev_page()">
+        الصفحة السابقة
+      </button>
+
+      <button onclick="next_page()">
+        الصفحة التالية
+      </button>
     </div>
   </div>
 
   <script>
+    const searchInput = document.getElementById("search-bar");
+
+    searchInput.addEventListener("keypress", function (event) {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        document.getElementById("search-button").click();
+      }
+    });
+
+    async function search() {
+      if ('URLSearchParams' in window) {
+        let searchParams = new URLSearchParams(window.location.search);
+        if (searchInput.value == "") {
+          if (searchParams.has("query")) {
+            searchParams.delete("query");
+            window.location.search = searchParams.toString();
+          }
+        } else {
+          searchParams.set("query", searchInput.value);
+          window.location.search = searchParams.toString();
+        }
+      }
+    }
+
+    async function next_page() {
+      if ('URLSearchParams' in window) {
+        let searchParams = new URLSearchParams(window.location.search);
+        const currentPage = parseInt(searchParams.get("page"));
+        if (!Number.isNaN(currentPage)) {
+          searchParams.set("page", currentPage + 1);
+          window.location.search = searchParams.toString();
+        } else {
+          searchParams.append("page", "0");
+          window.location.search = searchParams.toString();
+        }
+      }
+    }
+
+    async function prev_page() {
+      if ('URLSearchParams' in window) {
+        let searchParams = new URLSearchParams(window.location.search);
+        const currentPage = parseInt(searchParams.get("page"));
+        if (!Number.isNaN(currentPage)) {
+          searchParams.set("page", Math.max(currentPage - 1, 0));
+          window.location.search = searchParams.toString();
+        } else {
+          searchParams.append("page", "0");
+          window.location.search = searchParams.toString();
+        }
+      }
+    }
+
     async function logout() {
       const response = await fetch("/api/users/logout");
 

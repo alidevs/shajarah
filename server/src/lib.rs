@@ -110,6 +110,12 @@ impl Node {
     }
 }
 
+#[derive(Deserialize)]
+pub struct Pagination {
+    pub page: Option<usize>,
+    pub per_page: Option<usize>,
+}
+
 pub struct InnerAppState {
     pub db_pool: PgPool,
     pub cookies_secret: Key,

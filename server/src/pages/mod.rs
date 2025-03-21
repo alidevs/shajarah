@@ -2,13 +2,16 @@ use std::sync::Arc;
 
 use askama::Template;
 use axum::{
-    extract::State,
+    extract::{Query, State},
     response::{IntoResponse, Redirect},
 };
 
 use crate::{
     api::{
-        members::{routes::get_members_flat, MemberResponseBrief, MembersError},
+        members::{
+            routes::{get_members_flat, FlatMembersParams},
+            MemberResponseBrief, MembersError,
+        },
         users::models::UserRole,
     },
     auth::{AuthError, AuthExtractor},
@@ -52,15 +55,18 @@ impl IntoResponse for PagesError {
 pub struct AdminTemplate {
     name: String,
     members: Vec<MemberResponseBrief>,
+    query: Option<String>,
 }
 
 pub async fn admin_page(
     auth: Result<AuthExtractor<{ UserRole::Admin as u8 }>, AuthError>,
     state: State<Arc<InnerAppState>>,
+    params: Query<FlatMembersParams>,
 ) -> Result<impl IntoResponse, PagesError> {
     match auth {
         Ok(auth) => {
-            let members = match get_members_flat(state).await {
+            let query = params.0.query.clone();
+            let members = match get_members_flat(state, params).await {
                 Ok(members) => members,
                 Err(MembersError::NoMembers) => Vec::new().into(),
                 Err(e) => return Err(e.into()),
@@ -68,6 +74,7 @@ pub async fn admin_page(
             Ok(AdminTemplate {
                 name: auth.current_user.username,
                 members: members.0.into_iter().rev().collect(),
+                query,
             }
             .into_response())
         }
