@@ -657,10 +657,7 @@ impl Node {
             offset.y + layout_node.y * scale,
         );
 
-        let default_text_style = egui::style::default_text_styles()
-            .get(&egui::TextStyle::Monospace)
-            .map(|f| FontId::new(f.size * scale, f.family.clone()))
-            .unwrap_or(FontId::new(14.0 * scale, FontFamily::Monospace));
+        let text_style = FontId::new(20.0 * scale, FontFamily::Monospace);
 
         let painter = ui.painter();
 
@@ -673,7 +670,7 @@ impl Node {
                 .collect::<String>(),
             0.0,
             TextFormat {
-                font_id: default_text_style.clone(),
+                font_id: text_style.clone(),
                 color: ui.visuals().text_color(),
                 ..Default::default()
             },
@@ -753,7 +750,7 @@ impl Node {
 
         egui::Window::new(self.id.to_string())
             .id(egui::Id::new(self.id))
-            .max_width(150.)
+            .max_width(180.)
             .auto_sized()
             .resizable(false)
             .constrain(false)
@@ -791,13 +788,14 @@ impl Node {
                         .map(|l| format!("{} ", l.name.clone()))
                         .take(2)
                         .collect::<String>();
-                    ui.label(
+                    ui.heading(
                         RESHAPER
                             .reshape(format!("{} {}{}", self.name, lineage, self.last_name))
                             .chars()
                             .rev()
                             .collect::<String>(),
                     );
+
                     if let Some(personal_info) = self.personal_info.as_ref() {
                         if !personal_info.is_empty() {
                             ui.add_space(10.);
