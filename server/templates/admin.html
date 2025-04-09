@@ -1,581 +1,582 @@
-<!DOCTYPE html>
-<html>
+{% extends "base.html" %}
 
-<head>
-  <title>Admin page</title>
-</head>
+{% block title %}صفحة الإدارة{% endblock %}
 
-<body>
+{% block content %}
+<div class="mx-auto space-y-8 p-8 font-sans bg-gray-100">
+  <div class="flex justify-between items-center">
+    <span class="text-lg font-bold">اهلا، {{ name }}!</span>
+    <button onclick="logout()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded">تسجيل الخروج</button>
+  </div>
 
-  <style>
-    td,
-    th {
-      border: 1px solid #dddddd;
-      text-align: left;
-      padding: 8px;
-    }
+  <form id="new-member-form" onsubmit="new_member(event)" class="bg-white p-6 rounded shadow-md space-y-4"
+    enctype="multipart/form-data">
+    <h2 class="text-xl font-bold mb-2">إضافة عضو جديد</h2>
 
-    tr:nth-child(even) {
-      background-color: #dddddd;
-    }
-
-    #new-member-form {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      width: 16rem;
-    }
-
-    #new-member-form>* {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      width: 100%;
-    }
-
-    .hidden {
-      display: none;
-    }
-
-    .csv-operations {
-      display: flex;
-      justify-content: space-between;
-    }
-
-    .members-table {
-      width: 100%;
-    }
-  </style>
-  <div dir="rtl" class="main-container">
-    <div>
-      <button onclick="logout()">تسجيل الخروج</button>
-      <span>اهلا، {{ name }}!</span>
-    </div>
-
-    <form autocomplete="off" id="new-member-form" enctype="multipart/form-data" action="#" method="post"
-      onsubmit="new_member(event)">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div><label class="block mb-1">الاسم:</label><input name="name" type="text"
+          class="w-full border rounded px-3 py-2" /></div>
+      <div><label class="block mb-1">الاسم الاخير:</label><input name="last_name" type="text"
+          class="w-full border rounded px-3 py-2" /></div>
       <div>
-        <label for="new-member-name">الاسم:</label>
-        <input id="new-member-name" type="text" name="name" />
-      </div>
-      <div>
-        <label for="new-member-last-name">الاسم الاخير:</label>
-        <input id="new-member-last-name" type="text" name="last_name" />
-      </div>
-      <div>
-        <label for="new-member-gender">الجنس:</label>
-        <select id="new-member-gender" name="gender">
-          <option selected value> -- اختر الجنس -- </option>
+        <label class="block mb-1">الجنس:</label>
+        <select name="gender" class="w-full border rounded px-3 py-2">
+          <option selected value>-- اختر الجنس --</option>
           <option value="male">ذكر</option>
           <option value="female">انثى</option>
         </select>
       </div>
+      <div><label class="block mb-1">تاريخ الولادة:</label><input name="birthday" type="date"
+          class="w-full border rounded px-3 py-2" /></div>
       <div>
-        <label for="new-member-gender">تاريخ الولادة:</label>
-        <input id="new-member-birthday" type="date" name="birthday" />
-      </div>
-      <div>
-        <label for="new-member-mother-id">معرف الام:</label>
-        <select id="new-member-mother-id" name="mother_id">
-          <option selected value> -- اختر المعرف -- </option>
+        <label class="block mb-1">معرف الام:</label>
+        <select name="mother_id" class="w-full border rounded px-3 py-2">
+          <option selected value>-- اختر المعرف --</option>
           {% for member in members %}
           {% if member.gender == "female" %}
-          <option value={{member.id}}>{{ member.id }} {{ member.name }}</option>
+          <option value="{{member.id}}">{{ member.id }} {{ member.name }}</option>
           {% endif %}
           {% endfor %}
         </select>
       </div>
       <div>
-        <label for="new-member-father-id">معرف الاب:</label>
-        <select id="new-member-father-id" name="father_id">
-          <option selected value> -- اختر المعرف -- </option>
+        <label class="block mb-1">معرف الاب:</label>
+        <select name="father_id" class="w-full border rounded px-3 py-2">
+          <option selected value>-- اختر المعرف --</option>
           {% for member in members %}
           {% if member.gender == "male" %}
-          <option value={{member.id}}>{{ member.id }} {{ member.name }}</option>
+          <option value="{{member.id}}">{{ member.id }} {{ member.name }}</option>
           {% endif %}
           {% endfor %}
         </select>
       </div>
-      <div style="display: flex; flex-direction: column; align-items: start;">
-        <label for="new-member-info">معلومات شخصية:</label>
-        <div id="new-member-key-value-pairs">
-        </div>
-        <button type="button" id="new-member-add-pair-btn">+</button>
-      </div>
-      <div>
-        <label for="new-member-image">الصورة:</label>
-        <input id="new-member-image" type="file" name="image" />
-      </div>
-      <button type="submit" name="submit">إضافة عضو</button>
-    </form>
+    </div>
 
-    <br />
-    <br />
+    <div class="space-y-2">
+      <label class="block mb-1">معلومات شخصية:</label>
+      <div id="new-member-key-value-pairs" class="space-y-1"></div>
+      <button type="button" id="new-member-add-pair-btn" class="text-blue-500 hover:underline">+ إضافة حقل</button>
+    </div>
+
     <div>
-      <div class="csv-operations">
-        <a href="/api/members/export" download="exported-members.csv">
-          <button>تصدير قائمة العائلة</button>
-        </a>
-        <form autocomplete="off" id="upload-members-form" enctype="multipart/form-data" action="#" method="post"
-          onsubmit="upload_members(event)">
-          <input type="file" name="members_csv" accept="text/csv" />
-          <button type="submit">رفع قائمة العائلة</button>
-        </form>
-      </div>
+      <label class="block mb-1">الصورة:</label>
+      <input class="border px-2 py-1 rounded" name="image" type="file" class="w-full" />
+    </div>
 
+    <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded">إضافة عضو</button>
+  </form>
+
+  <div class="bg-white p-6 rounded shadow space-y-4">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <a href="/api/members/export" download="exported-members.csv">
+        <button class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">تصدير قائمة العائلة</button>
+      </a>
+      <form id="upload-members-form" onsubmit="upload_members(event)" enctype="multipart/form-data"
+        class="flex items-center gap-2">
+        <input type="file" name="members_csv" accept="text/csv" class="border px-2 py-1 rounded" />
+        <button type="submit" class="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded">رفع
+          القائمة</button>
+      </form>
+    </div>
+
+    <div class="flex gap-2 items-center">
       {% match query %}
       {% when Some with (query) %}
-      <input id="search-bar" type="text" value="{{ query }}" />
+      <input id="search-bar" type="text" value="{{ query }}" class="border px-3 py-2 rounded w-full" />
       {% when None %}
-      <input id="search-bar" type="text" />
+      <input id="search-bar" type="text" class="border px-3 py-2 rounded w-full" />
       {% endmatch %}
-      <button id="search-button" onclick="search()">ابحث</button>
+      <button id="search-button" onclick="search()"
+        class="bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded">ابحث</button>
+    </div>
 
-      <table class="members-table">
-        <tr>
-          <th>المعرف</th>
-          <th>الاسم</th>
-          <th>الاسم الاخير</th>
-          <th>الجنس</th>
-          <th>تاريخ الولادة</th>
-          <th>معرف الاب</th>
-          <th>معرف الام</th>
-          <th>معلومات شخصية</th>
-          <th>الصورة الشخصية</th>
-          <th></th>
-          <th></th>
-        </tr>
-        {% for member in members %}
-        <tr>
-          <td>{{ member.id|e }}</td>
-          <td>{{ member.name|e }}</td>
-          <td>{{ member.last_name|e }}</td>
-          {% if member.gender == "male" %}
-          <td>ذكر</td>
-          {% else if member.gender == "female" %}
-          <td>انثى</td>
-          {% endif %}
-          {% match member.birthday %}
-          {% when Some with (birthday) %}
-          <td>{{ birthday|e }}</td>
-          {% when None %}
-          <td>NULL</td>
-          {% endmatch %}
-          {% match member.father_id %}
-          {% when Some with (father_id) %}
-          <td>{{ father_id|e }}</td>
-          {% when None %}
-          <td>NULL</td>
-          {% endmatch %}
-          {% match member.mother_id %}
-          {% when Some with (mother_id) %}
-          <td>{{ mother_id|e }}</td>
-          {% when None %}
-          <td>NULL</td>
-          {% endmatch %}
-          {% match member.personal_info %}
-          {% when Some with (personal_info) %}
-          <td>
-            <pre><code>{{ personal_info|json|safe }}</code></pre>
-          </td>
-          {% when None %}
-          <td>NULL</td>
-          {% endmatch %}
-          {% match member.image %}
-          {% when Some with (image) %}
-          {% match member.image_type %}
-          {% when Some with (image_type) %}
-          <td style="max-width: 10rem;">
-            <img style="max-width: 100%;" src="data:{{ image_type }};base64, {{ image|bytes_to_base64 }}" />
-          </td>
-          {% when None %}
-          <td>NULL</td>
-          {% endmatch %}
-          {% when None %}
-          <td>NULL</td>
-          {% endmatch %}
-          <td><button onclick="delete_member({{ member.id }})">حذف</button></td>
-          <td dir="rtl" style="text-align: right;">
-            <button onclick="toggle_edit_member_form(this, {{ member.id }})">تعديل</button>
+    <div class="overflow-auto">
+      <table class="table-auto w-full border border-gray-300 mt-4 text-center">
+        <thead class="bg-gray-200">
+          <tr>
+            <th class="p-2 border">المعرف</th>
+            <th class="p-2 border">الاسم</th>
+            <th class="p-2 border">الاسم الاخير</th>
+            <th class="p-2 border">الجنس</th>
+            <th class="p-2 border">تاريخ الولادة</th>
+            <th class="p-2 border">معرف الاب</th>
+            <th class="p-2 border">معرف الام</th>
+            <th class="p-2 border">معلومات شخصية</th>
+            <th class="p-2 border">الصورة</th>
+            <th colspan="2" class="p-2 border">إجراءات</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for member in members %}
+          <tr>
+            <td class="p-2 border">{{ member.id|e }}</td>
+            <td class="p-2 border">{{ member.name|e }}</td>
+            <td class="p-2 border">{{ member.last_name|e }}</td>
+            {% if member.gender == "male" %}
+            <td class="p-2 border">ذكر</td>
+            {% else if member.gender == "female" %}
+            <td class="p-2 border">انثى</td>
+            {% endif %}
+            {% match member.birthday %}
+            {% when Some with (birthday) %}
+            <td class="p-2 border">{{ birthday|e }}</td>
+            {% when None %}
+            <td class="p-2 border">NULL</td>
+            {% endmatch %}
+            {% match member.father_id %}
+            {% when Some with (father_id) %}
+            <td class="p-2 border">{{ father_id|e }}</td>
+            {% when None %}
+            <td class="p-2 border">NULL</td>
+            {% endmatch %}
+            {% match member.mother_id %}
+            {% when Some with (mother_id) %}
+            <td class="p-2 border">{{ mother_id|e }}</td>
+            {% when None %}
+            <td class="p-2 border">NULL</td>
+            {% endmatch %}
+            {% match member.personal_info %}
+            {% when Some with (personal_info) %}
+            <td class="p-2 border">
+              {% for (key, value) in personal_info %}
+              <span>{{key}}: {{value}}</span>
+              {% endfor %}
+            </td>
+            {% when None %}
+            <td class="p-2 border">NULL</td>
+            {% endmatch %}
+            {% match member.image %}
+            {% when Some with (image) %}
+            {% match member.image_type %}
+            {% when Some with (image_type) %}
+            <td class="p-2 border" style="max-width: 10rem;">
+              <img style="max-width: 100%;" src="data:{{ image_type }};base64, {{ image|bytes_to_base64 }}" />
+            </td>
+            {% when None %}
+            <td class="p-2 border">NULL</td>
+            {% endmatch %}
+            {% when None %}
+            <td class="p-2 border">NULL</td>
+            {% endmatch %}
+            <td class="p-2 border">
+              <button class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded"
+                onclick="confirm_delete({{ member.id }})">حذف</button>
+            </td>
+            <td dir="rtl" class="p-2 border text-right">
+              <button class="bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1 rounded" id="edit-toggle"
+                onclick="toggle_edit_member_form(this, {{ member.id }})">تعديل</button>
 
-            <form autocomplete="off" onsubmit="edit_member(event, {{ member.id }})" class="hidden edit-member-form"
-              id="edit-member-form-{{ member.id }}" enctype="multipart/form-data" action="#" method="post">
-              <div>
-                <label for="edit-member-name">الاسم:</label>
-                <input id="edit-member-name" type="text" name="name" value={{ member.name }} />
-              </div>
-              <div>
-                <label for="edit-member-last-name">الاسم الاخير:</label>
-                <input id="edit-member-last-name" type="text" name="last_name" value={{ member.last_name }} />
-              </div>
-              <div>
-                <label for="edit-member-gender">الجنس:</label>
-                <select id="edit-member-gender" name="gender">
-                  {% if member.gender == "male" %}
-                  <option selected value="male">ذكر</option>
-                  <option value="female">انثى</option>
-                  {% else if member.gender == "female" %}
-                  <option value="male">ذكر</option>
-                  <option selected value="female">انثى</option>
-                  {% endif %}
-                </select>
-              </div>
-              <div>
-                <label for="edit-member-gender">تاريخ الولادة:</label>
-                {% match member.birthday %}
-                {% when Some with (birthday) %}
-                <input id="edit-member-birthday" type="date" name="birthday" value={{
-                  birthday.format("%Y-%m-%d").to_string() }} />
-                {% when None %}
-                <input id="edit-member-birthday" type="date" name="birthday" />
-                {% endmatch %}
-              </div>
-              <div>
-                <label for="edit-member-mother-id">معرف الام:</label>
-                <select id="edit-member-mother-id" name="mother_id">
-                  {% if member.mother_id.is_none() %}
-                  <option selected value> -- اختر المعرف -- </option>
-                  {% else %}
-                  <option value> -- اختر المعرف -- </option>
-                  {% endif %}
-
-                  {% for other_member in members %}
-                  {% if other_member.gender == "female" %}
-                  {% match member.mother_id %}
-                  {% when Some with (mother_id) %}
-                  {% if other_member.id == mother_id|deref_i32 %}
-                  <option selected value={{other_member.id}}>{{ other_member.id }} {{ other_member.name }}</option>
-                  {% else if other_member.id != member.id %}
-                  <option value={{other_member.id}}>{{ other_member.id }} {{ other_member.name }}</option>
-                  {% endif %}
+              <form autocomplete="off" onsubmit="edit_member(event, {{ member.id }})" class="hidden edit-member-form"
+                id="edit-member-form-{{ member.id }}" enctype="multipart/form-data" action="#" method="post">
+                <div>
+                  <label for="edit-member-name">الاسم:</label>
+                  <input class="w-full border rounded px-3 py-2" id="edit-member-name" type="text" name="name" value={{
+                    member.name }} />
+                </div>
+                <div>
+                  <label for="edit-member-last-name">الاسم الاخير:</label>
+                  <input class="w-full border rounded px-3 py-2" id="edit-member-last-name" type="text" name="last_name"
+                    value={{ member.last_name }} />
+                </div>
+                <div>
+                  <label for="edit-member-gender">الجنس:</label>
+                  <select class="w-full border rounded px-3 py-2" id="edit-member-gender" name="gender">
+                    {% if member.gender == "male" %}
+                    <option selected value="male">ذكر</option>
+                    <option value="female">انثى</option>
+                    {% else if member.gender == "female" %}
+                    <option value="male">ذكر</option>
+                    <option selected value="female">انثى</option>
+                    {% endif %}
+                  </select>
+                </div>
+                <div>
+                  <label for="edit-member-gender">تاريخ الولادة:</label>
+                  {% match member.birthday %}
+                  {% when Some with (birthday) %}
+                  <input class="w-full border rounded px-3 py-2" id="edit-member-birthday" type="date" name="birthday"
+                    value={{ birthday.format("%Y-%m-%d").to_string() }} />
                   {% when None %}
-                  {% if other_member.id != member.id %}
-                  <option value={{other_member.id}}>{{ other_member.id }} {{ other_member.name }}</option>
-                  {% endif %}
-                  {% endmatch %}
-                  {% endif %}
-                  {% endfor %}
-                </select>
-              </div>
-              <div>
-                <label for="edit-member-mother-id">معرف الاب:</label>
-                <select id="edit-member-father-id" name="father_id">
-                  {% if member.father_id.is_none() %}
-                  <option selected value> -- اختر المعرف -- </option>
-                  {% else %}
-                  <option value> -- اختر المعرف -- </option>
-                  {% endif %}
-
-                  {% for other_member in members %}
-                  {% if other_member.gender == "male" %}
-                  {% match member.father_id %}
-                  {% when Some with (father_id) %}
-                  {% if other_member.id == father_id|deref_i32 %}
-                  <option selected value={{other_member.id}}>{{ other_member.id }} {{ other_member.name }}</option>
-                  {% else if other_member.id != member.id %}
-                  <option value={{other_member.id}}>{{ other_member.id }} {{ other_member.name }}</option>
-                  {% endif %}
-                  {% when None %}
-                  {% if other_member.id != member.id %}
-                  <option value={{other_member.id}}>{{ other_member.id }} {{ other_member.name }}</option>
-                  {% endif %}
-                  {% endmatch %}
-                  {% endif %}
-                  {% endfor %}
-                </select>
-              </div>
-              <div>
-                <label for="edit-member-info">المعلومات الشخصية:</label>
-                <div style="display: flex; flex-direction: column;" id="edit-member-key-value-pairs">
-                  {% match member.personal_info %}
-                  {% when Some with (personal_info) %}
-                  {% for (key, value) in personal_info %}
-                  <div class="edit-member-pair">
-                    <input class="json-key" value="{{key}}" />
-                    <input class="json-value" value="{{value}}" />
-                    <button type="button" id="edit-member-remove-pair-btn" onclick="removePair(this)">x</button>
-                  </div>
-                  {% endfor %}
-                  {% when None %}
+                  <input class="w-full border rounded px-3 py-2" id="edit-member-birthday" type="date"
+                    name="birthday" />
                   {% endmatch %}
                 </div>
-                <button type="button" id="edit-member-add-pair-btn">+</button>
-              </div>
-              <div>
-                <label for="edit-member-image">الصورة:</label>
-                <input id="edit-member-image" type="file" name="image" />
-              </div>
-              <button type="submit" name="submit">إرسال التعديل</button>
-            </form>
-          </td>
-        </tr>
-        {% endfor %}
+                <div>
+                  <label for="edit-member-mother-id">معرف الام:</label>
+                  <select class="w-full border rounded px-3 py-2" id="edit-member-mother-id" name="mother_id">
+                    {% if member.mother_id.is_none() %}
+                    <option selected value> -- اختر المعرف -- </option>
+                    {% else %}
+                    <option value> -- اختر المعرف -- </option>
+                    {% endif %}
+
+                    {% for other_member in members %}
+                    {% if other_member.gender == "female" %}
+                    {% match member.mother_id %}
+                    {% when Some with (mother_id) %}
+                    {% if other_member.id == mother_id|deref_i32 %}
+                    <option selected value={{other_member.id}}>{{ other_member.id }} {{ other_member.name }}</option>
+                    {% else if other_member.id != member.id %}
+                    <option value={{other_member.id}}>{{ other_member.id }} {{ other_member.name }}</option>
+                    {% endif %}
+                    {% when None %}
+                    {% if other_member.id != member.id %}
+                    <option value={{other_member.id}}>{{ other_member.id }} {{ other_member.name }}</option>
+                    {% endif %}
+                    {% endmatch %}
+                    {% endif %}
+                    {% endfor %}
+                  </select>
+                </div>
+                <div>
+                  <label for="edit-member-mother-id">معرف الاب:</label>
+                  <select class="w-full border rounded px-3 py-2" id="edit-member-father-id" name="father_id">
+                    {% if member.father_id.is_none() %}
+                    <option selected value> -- اختر المعرف -- </option>
+                    {% else %}
+                    <option value> -- اختر المعرف -- </option>
+                    {% endif %}
+
+                    {% for other_member in members %}
+                    {% if other_member.gender == "male" %}
+                    {% match member.father_id %}
+                    {% when Some with (father_id) %}
+                    {% if other_member.id == father_id|deref_i32 %}
+                    <option selected value={{other_member.id}}>{{ other_member.id }} {{ other_member.name }}</option>
+                    {% else if other_member.id != member.id %}
+                    <option value={{other_member.id}}>{{ other_member.id }} {{ other_member.name }}</option>
+                    {% endif %}
+                    {% when None %}
+                    {% if other_member.id != member.id %}
+                    <option value={{other_member.id}}>{{ other_member.id }} {{ other_member.name }}</option>
+                    {% endif %}
+                    {% endmatch %}
+                    {% endif %}
+                    {% endfor %}
+                  </select>
+                </div>
+                <div>
+                  <label for="edit-member-info">المعلومات الشخصية:</label>
+                  <div id="edit-member-key-value-pairs">
+                    {% match member.personal_info %}
+                    {% when Some with (personal_info) %}
+                    {% for (key, value) in personal_info %}
+                    <div class="flex" id="edit-member-pair">
+                      <div class="flex" id="edit-member-pair-fields">
+                        <input class="border rounded px-3 py-2" id="json-key" value="{{key}}" />
+                        <input class="border rounded px-3 py-2" id="json-value" value="{{value}}" />
+                      </div>
+                      <button class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded" type="button"
+                        id="edit-member-remove-pair-btn" onclick="removePair(this)">x</button>
+                    </div>
+                    {% endfor %}
+                    {% when None %}
+                    {% endmatch %}
+                  </div>
+                  <button class="text-blue-500 hover:underline" type="button" id="edit-member-add-pair-btn">+ إضافة
+                    حقل</button>
+                </div>
+                <div>
+                  <label for="edit-member-image">الصورة:</label>
+                  <input class="border px-2 py-1 rounded" id="edit-member-image" type="file" name="image" />
+                </div>
+                <button class="my-3 bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1 rounded" type="submit"
+                  name="submit">إرسال التعديل</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
       </table>
+    </div>
 
-      <button onclick="prev_page()">
-        الصفحة السابقة
-      </button>
-
-      <button onclick="next_page()">
-        الصفحة التالية
-      </button>
+    <div class="flex justify-between mt-4">
+      <button onclick="prev_page()" class="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded">الصفحة السابقة</button>
+      <button onclick="next_page()" class="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded">الصفحة التالية</button>
     </div>
   </div>
+</div>
 
-  <script>
-    const searchInput = document.getElementById("search-bar");
+<script>
+  const searchInput = document.getElementById("search-bar");
 
-    searchInput.addEventListener("keypress", function (event) {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        document.getElementById("search-button").click();
+  searchInput.addEventListener("keypress", function (event) {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      document.getElementById("search-button").click();
+    }
+  });
+
+  async function search() {
+    if ('URLSearchParams' in window) {
+      let searchParams = new URLSearchParams(window.location.search);
+      if (searchInput.value == "") {
+        if (searchParams.has("query")) {
+          searchParams.delete("query");
+          window.location.search = searchParams.toString();
+        }
+      } else {
+        searchParams.set("query", searchInput.value);
+        window.location.search = searchParams.toString();
+      }
+    }
+  }
+
+  async function next_page() {
+    if ('URLSearchParams' in window) {
+      let searchParams = new URLSearchParams(window.location.search);
+      const currentPage = parseInt(searchParams.get("page"));
+      if (Number.isNaN(currentPage)) {
+        searchParams.append("page", "1");
+        window.location.search = searchParams.toString();
+      } else {
+        searchParams.set("page", currentPage + 1);
+        window.location.search = searchParams.toString();
+      }
+    }
+  }
+
+  async function prev_page() {
+    if ('URLSearchParams' in window) {
+      let searchParams = new URLSearchParams(window.location.search);
+      const currentPage = parseInt(searchParams.get("page"));
+      if (Number.isNaN(currentPage)) {
+        searchParams.append("page", "0");
+        window.location.search = searchParams.toString();
+      } else {
+        searchParams.set("page", Math.max(currentPage - 1, 0));
+        window.location.search = searchParams.toString();
+      }
+    }
+  }
+
+  async function logout() {
+    const response = await fetch("/api/users/logout");
+
+    if (response.status == 200) {
+      window.location.href = "/login";
+    }
+  }
+
+  async function new_member(e) {
+    e.preventDefault();
+    const formElement = e.currentTarget;
+
+    const formData = new FormData();
+    for (e of formElement.querySelectorAll("input[name], select[name]")) {
+      if (e.name === "image") {
+        if (e.files[0]) {
+          const buf = await e.files[0].arrayBuffer();
+          formData.append(e.name, new Blob([buf], {type: e.files[0].type}));
+        }
+      } else {
+        formData.append(e.name, e.value);
+      }
+    }
+
+    const pairs = formElement.querySelectorAll(".new-member-pair");
+    const personalInfo = {};
+
+    pairs.forEach(pair => {
+      const key = pair.querySelector("input#json-key").value;
+      const value = pair.querySelector("input#json-value").value;
+
+      if (key) {
+        personalInfo[key] = value;
       }
     });
 
-    async function search() {
-      if ('URLSearchParams' in window) {
-        let searchParams = new URLSearchParams(window.location.search);
-        if (searchInput.value == "") {
-          if (searchParams.has("query")) {
-            searchParams.delete("query");
-            window.location.search = searchParams.toString();
-          }
-        } else {
-          searchParams.set("query", searchInput.value);
-          window.location.search = searchParams.toString();
-        }
-      }
-    }
+    formData.append("info", JSON.stringify(personalInfo));
 
-    async function next_page() {
-      if ('URLSearchParams' in window) {
-        let searchParams = new URLSearchParams(window.location.search);
-        const currentPage = parseInt(searchParams.get("page"));
-        if (!Number.isNaN(currentPage)) {
-          searchParams.set("page", currentPage + 1);
-          window.location.search = searchParams.toString();
-        } else {
-          searchParams.append("page", "0");
-          window.location.search = searchParams.toString();
-        }
-      }
-    }
+    console.log(formData);
 
-    async function prev_page() {
-      if ('URLSearchParams' in window) {
-        let searchParams = new URLSearchParams(window.location.search);
-        const currentPage = parseInt(searchParams.get("page"));
-        if (!Number.isNaN(currentPage)) {
-          searchParams.set("page", Math.max(currentPage - 1, 0));
-          window.location.search = searchParams.toString();
-        } else {
-          searchParams.append("page", "0");
-          window.location.search = searchParams.toString();
-        }
-      }
-    }
-
-    async function logout() {
-      const response = await fetch("/api/users/logout");
-
-      if (response.status == 200) {
-        window.location.href = "/login";
-      }
-    }
-
-    async function new_member(e) {
-      e.preventDefault();
-      const formElement = e.currentTarget;
-
-      const formData = new FormData();
-      for (e of formElement.querySelectorAll("input[name], select[name]")) {
-        if (e.name === "image") {
-          if (e.files[0]) {
-            const buf = await e.files[0].arrayBuffer();
-            formData.append(e.name, new Blob([buf], {type: e.files[0].type}));
-          }
-        } else {
-          formData.append(e.name, e.value);
-        }
-      }
-
-      const pairs = formElement.querySelectorAll(".new-member-pair");
-      const personalInfo = {};
-
-      pairs.forEach(pair => {
-        const key = pair.querySelector("input.json-key").value;
-        const value = pair.querySelector("input.json-value").value;
-
-        if (key) {
-          personalInfo[key] = value;
-        }
-      });
-
-      formData.append("info", JSON.stringify(personalInfo));
-
-      console.log(formData);
-
-      try {
-        const response = await fetch("/api/members", {
-          method: "POST",
-          body: formData
-        });
-
-        if (response.status === 200) {
-          location.reload();
-        } else {
-          const body = await response.json();
-          // TODO: show error more nicely;
-          // in an HTML element or something
-          alert(body.error);
-        }
-      } catch (error) {
-        console.error(error);
-      }
-    }
-
-    async function delete_member(id) {
-      const response = await fetch(`/api/members/${id}`, {
-        method: "DELETE",
+    try {
+      const response = await fetch("/api/members", {
+        method: "POST",
+        body: formData
       });
 
       if (response.status === 200) {
         location.reload();
+      } else {
+        const body = await response.json();
+        // TODO: show error more nicely;
+        // in an HTML element or something
+        alert(body.error);
       }
+    } catch (error) {
+      console.error(error);
     }
+  }
 
-    async function toggle_edit_member_form(e, id) {
-      const formElement = document.getElementById(`edit-member-form-${id}`);
-      formElement.classList.toggle("hidden");
+  function confirm_delete(id) {
+    if (confirm("هل أنت متأكد أنك تريد حذف هذا العضو؟")) {
+      delete_member(id);
     }
+  }
 
-    document.querySelectorAll(".edit-member-form input, .edit-member-form select, .edit-member-form textarea").forEach((element) => {
-      element.addEventListener("change", (e) => {
-        e.currentTarget.classList.add("changed");
-      });
+  async function delete_member(id) {
+    const response = await fetch(`/api/members/${id}`, {
+      method: "DELETE",
     });
 
-    async function edit_member(e, id) {
-      e.preventDefault();
-      const formElement = e.currentTarget;
+    if (response.status === 200) {
+      location.reload();
+    }
+  }
 
-      let formData = new FormData();
+  async function toggle_edit_member_form(e, id) {
+    const editToggle = document.getElementById("edit-toggle");
+    const formElement = document.getElementById(`edit-member-form-${id}`);
+    formElement.classList.toggle("hidden");
+    if (formElement.classList.contains("hidden")) {
+      // TODO: reset fields to original values
+      editToggle.innerHTML = "تعديل";
+    } else {
+      editToggle.innerHTML = "إغلاق التعديل";
+    }
+  }
 
-      for (e of formElement.querySelectorAll("input[name].changed, select[name].changed")) {
-        if (e.name === "image") {
-          if (e.files[0]) {
-            const buf = await e.files[0].arrayBuffer();
-            formData.append(e.name, new Blob([buf], {type: e.files[0].type}));
-          }
-        } else {
-          formData.append(e.name, e.value);
+  document.querySelectorAll(".edit-member-form input, .edit-member-form select, .edit-member-form textarea").forEach((element) => {
+    element.addEventListener("change", (e) => {
+      e.currentTarget.classList.add("changed");
+    });
+  });
+
+  async function edit_member(e, id) {
+    e.preventDefault();
+    const formElement = e.currentTarget;
+
+    let formData = new FormData();
+
+    for (e of formElement.querySelectorAll("input[name].changed, select[name].changed")) {
+      if (e.name === "image") {
+        if (e.files[0]) {
+          const buf = await e.files[0].arrayBuffer();
+          formData.append(e.name, new Blob([buf], {type: e.files[0].type}));
         }
-      }
-
-      const pairs = formElement.querySelectorAll(".edit-member-pair");
-      const personalInfo = {};
-
-      pairs.forEach(pair => {
-        const key = pair.querySelector("input.json-key").value;
-        const value = pair.querySelector("input.json-value").value;
-
-        if (key) {
-          personalInfo[key] = value;
-        }
-      });
-
-      formData.append("info", JSON.stringify(personalInfo));
-
-      console.log(formData);
-
-      const res = await fetch(`/api/members/${id}`, {
-        method: "PUT",
-        body: formData,
-      });
-
-      if (res.status === 200) {
-        location.reload();
+      } else {
+        formData.append(e.name, e.value);
       }
     }
 
-    async function upload_members(event) {
-      event.preventDefault();
-      const formElement = event.currentTarget;
-      const formData = new FormData(formElement);
+    const pairs = formElement.querySelectorAll("#edit-member-pair-fields");
+    const personalInfo = {};
 
-      const res = await fetch("/api/members/import", {
-        method: "POST",
-        body: formData,
-      });
+    pairs.forEach(pair => {
+      const key = pair.querySelector("input#json-key").value;
+      const value = pair.querySelector("input#json-value").value;
 
-      if (res.status === 200) {
-        location.reload();
+      if (key) {
+        personalInfo[key] = value;
       }
+    });
+
+    formData.append("info", JSON.stringify(personalInfo));
+
+    console.log(formData);
+
+    const res = await fetch(`/api/members/${id}`, {
+      method: "PUT",
+      body: formData,
+    });
+
+    if (res.status === 200) {
+      location.reload();
     }
+  }
 
-    const addMemberKeyValuePairsDiv = document.getElementById("new-member-key-value-pairs");
+  async function upload_members(event) {
+    event.preventDefault();
+    const formElement = event.currentTarget;
+    const formData = new FormData(formElement);
 
-    document.getElementById("new-member-add-pair-btn").addEventListener("click", () => {
+    const res = await fetch("/api/members/import", {
+      method: "POST",
+      body: formData,
+    });
+
+    if (res.status === 200) {
+      location.reload();
+    }
+  }
+
+  const addMemberKeyValuePairsDiv = document.getElementById("new-member-key-value-pairs");
+
+  document.getElementById("new-member-add-pair-btn").addEventListener("click", () => {
+    const pairDiv = document.createElement("div");
+    pairDiv.id = "new-member-pair";
+    pairDiv.className = "flex";
+    const pairFields = document.createElement("div");
+    pairFields.className = "flex";
+    pairFields.id = "edit-member-pair-fields";
+
+    const keyInput = document.createElement("input");
+    keyInput.type = "text";
+    keyInput.id = "json-key";
+    keyInput.className = "border rounded px-3 py-2";
+    keyInput.placeholder = "مثال: المهنة";
+
+    const valueInput = document.createElement("input");
+    valueInput.type = "text";
+    valueInput.id = "json-value";
+    valueInput.className = "border rounded px-3 py-2";
+    valueInput.placeholder = "مثال: محامي";
+
+    const removeBtn = document.createElement("button");
+    removeBtn.textContent = "x";
+    removeBtn.className = "bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded";
+    removeBtn.onclick = () => pairDiv.remove();
+
+    pairDiv.appendChild(pairFields);
+    pairFields.appendChild(keyInput);
+    pairFields.appendChild(valueInput);
+    pairDiv.appendChild(removeBtn);
+
+    addMemberKeyValuePairsDiv.appendChild(pairDiv);
+  });
+
+  document.querySelectorAll("#edit-member-add-pair-btn").forEach((element) => {
+    element.addEventListener("click", (e) => {
+      const button = e.currentTarget;
+      const parentDiv = button.parentElement;
+      const editMemberKeyValuePairsDiv = parentDiv.querySelector("#edit-member-key-value-pairs");
+
       const pairDiv = document.createElement("div");
-      pairDiv.className = "new-member-pair";
+      pairDiv.id = "edit-member-pair";
+      pairDiv.className = "flex";
+      const pairFields = document.createElement("div");
+      pairFields.className = "flex";
+      pairFields.id = "edit-member-pair-fields";
 
       const keyInput = document.createElement("input");
       keyInput.type = "text";
-      keyInput.className = "json-key";
+      keyInput.id = "json-key";
+      keyInput.className = "border rounded px-3 py-2";
       keyInput.placeholder = "مثال: المهنة";
 
       const valueInput = document.createElement("input");
       valueInput.type = "text";
-      valueInput.className = "json-value";
+      valueInput.id = "json-value";
+      valueInput.className = "border rounded px-3 py-2";
       valueInput.placeholder = "مثال: محامي";
 
       const removeBtn = document.createElement("button");
       removeBtn.textContent = "x";
+      removeBtn.className = "bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded";
       removeBtn.onclick = () => pairDiv.remove();
 
-      pairDiv.appendChild(keyInput);
-      pairDiv.appendChild(valueInput);
+      pairDiv.appendChild(pairFields);
+      pairFields.appendChild(keyInput);
+      pairFields.appendChild(valueInput);
       pairDiv.appendChild(removeBtn);
 
-      addMemberKeyValuePairsDiv.appendChild(pairDiv);
-    });
+      editMemberKeyValuePairsDiv.appendChild(pairDiv);
+    })
+  });
 
-    document.querySelectorAll("#edit-member-add-pair-btn").forEach((element) => {
-      element.addEventListener("click", (e) => {
-        const button = e.currentTarget;
-        const parentDiv = button.parentElement;
-        const editMemberKeyValuePairsDiv = parentDiv.querySelector("#edit-member-key-value-pairs");
-
-        const pairDiv = document.createElement("div");
-        pairDiv.className = "edit-member-pair";
-
-        const keyInput = document.createElement("input");
-        keyInput.type = "text";
-        keyInput.className = "json-key";
-        keyInput.placeholder = "مثال: المهنة";
-
-        const valueInput = document.createElement("input");
-        valueInput.type = "text";
-        valueInput.className = "json-value";
-        valueInput.placeholder = "مثال: محامي";
-
-        const removeBtn = document.createElement("button");
-        removeBtn.textContent = "x";
-        removeBtn.onclick = () => pairDiv.remove();
-
-        pairDiv.appendChild(keyInput);
-        pairDiv.appendChild(valueInput);
-        pairDiv.appendChild(removeBtn);
-
-        editMemberKeyValuePairsDiv.appendChild(pairDiv);
-      })
-    });
-
-    function removePair(button) {
-      button.parentElement.remove();
-    }
-  </script>
-</body>
-
-</html>
+  function removePair(button) {
+    button.parentElement.remove();
+  }
+</script>
+{% endblock %}
