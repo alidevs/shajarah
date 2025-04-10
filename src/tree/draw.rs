@@ -1,4 +1,5 @@
 use ar_reshaper::{config::LigaturesFlags, ArabicReshaper, ReshaperConfig};
+use egui::epaint::PathStroke;
 use egui::{
     epaint::CubicBezierShape, text::LayoutJob, Align, Color32, CornerRadius, FontFamily, FontId,
     PointerButton, Pos2, Rect, Sense, Shape, TextFormat, Vec2, Vec2b, Widget,
@@ -327,6 +328,40 @@ impl Node {
 
         let painter = ui.painter();
         painter.circle_filled(coords, NODE_RADIUS as f32 * scale, Color32::LIGHT_BLUE);
+
+        if !self.children.is_empty() {
+            if self.collapsed {
+                painter.add(Shape::convex_polygon(
+                    vec![
+                        coords + Vec2::new(-(NODE_RADIUS as f32), NODE_RADIUS as f32) * scale,
+                        coords
+                            + Vec2::new(-(NODE_RADIUS as f32), NODE_RADIUS as f32) * scale
+                            + Vec2::new(-5., -5.) * scale,
+                        coords
+                            + Vec2::new(-(NODE_RADIUS as f32), NODE_RADIUS as f32) * scale
+                            + Vec2::new(5., -5.) * scale,
+                    ],
+                    stroke.color,
+                    PathStroke::NONE,
+                ));
+            } else {
+                painter.add(Shape::convex_polygon(
+                    vec![
+                        coords
+                            + Vec2::new(-(NODE_RADIUS as f32), NODE_RADIUS as f32) * scale
+                            + Vec2::new(0., -5.) * scale,
+                        coords
+                            + Vec2::new(-(NODE_RADIUS as f32), NODE_RADIUS as f32) * scale
+                            + Vec2::new(-5., 0.) * scale,
+                        coords
+                            + Vec2::new(-(NODE_RADIUS as f32), NODE_RADIUS as f32) * scale
+                            + Vec2::new(5., 0.) * scale,
+                    ],
+                    stroke.color,
+                    PathStroke::NONE,
+                ));
+            }
+        }
 
         #[cfg(feature = "debug-ui")]
         painter.rect_stroke(
