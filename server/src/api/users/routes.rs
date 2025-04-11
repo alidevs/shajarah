@@ -112,26 +112,24 @@ RETURNING sessions.id
     .fetch_one(&state.db_pool)
     .await?;
 
-    #[allow(unused_mut)]
-    let mut cookie = Cookie::build((SESSION_COOKIE_NAME, session.id.to_string()))
+    let cookie = Cookie::build((SESSION_COOKIE_NAME, session.id.to_string()))
         .path("/")
         .expires(time_now + time::Duration::days(2))
-        .http_only(true);
+        .http_only(true)
+        .domain(
+            state
+                .domain
+                .host_str()
+                .expect("domain must have a host")
+                .to_string(),
+        );
 
     #[cfg(not(debug_assertions))]
-    {
-        cookie = cookie
-            // TODO: make this configurable
-            .domain("shajarah.bksalman.com")
-            .secure(true);
-    }
+    let cookie = cookie.secure(true);
 
-    #[cfg(debug_assertions)]
-    {
-        cookie = cookie.domain("localhost");
-    }
+    let cookie = cookie.build();
 
-    cookies.private(&state.cookies_secret).add(cookie.build());
+    cookies.private(&state.cookies_secret).add(cookie);
 
     Ok(())
 }
@@ -157,22 +155,21 @@ DELETE FROM sessions WHERE sessions.id = $1
     //     .execute(&mut db)
     //     .await?;
 
-    let mut cookie = Cookie::build((SESSION_COOKIE_NAME, ""))
+    log::debug!("{}", state.domain.to_string());
+
+    let cookie = Cookie::build((SESSION_COOKIE_NAME, ""))
         .path("/")
-        .http_only(true);
+        .http_only(true)
+        .domain(
+            state
+                .domain
+                .host_str()
+                .expect("domain must have a host")
+                .to_string(),
+        );
 
     #[cfg(not(debug_assertions))]
-    {
-        cookie = cookie
-            // TODO: use the actual musawarah domain
-            .domain("salmanforgot.com")
-            .secure(true);
-    }
-
-    #[cfg(debug_assertions)]
-    {
-        cookie = cookie.domain("localhost");
-    }
+    let cookie = cookie.secure(true);
 
     cookies.remove(cookie.build());
 

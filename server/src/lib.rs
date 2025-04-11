@@ -8,6 +8,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use tower_cookies::Key;
+use url::Url;
 
 pub mod api;
 pub mod auth;
@@ -36,9 +37,10 @@ pub enum ConfigError {
     TomlError(#[from] toml::de::Error),
 }
 
-#[derive(Serialize, Deserialize, Default)]
+#[derive(Serialize, Deserialize)]
 pub struct Config {
     pub cookie_secret: String,
+    pub domain: url::Url,
 }
 
 impl Config {
@@ -119,6 +121,7 @@ pub struct Pagination {
 pub struct InnerAppState {
     pub db_pool: PgPool,
     pub cookies_secret: Key,
+    pub domain: Url,
 }
 
 #[derive(Clone, FromRef)]

@@ -28,4 +28,5 @@ tokio = { version = "1.38.1", features = ["full"] }
 toml = "0.8.16"
 tower-cookies = { version = "0.10.0", features = ["private"] }
 tower-http = { version = "0.5.0", features = ["cors", "limit", "fs"] }
+url = { version = "2.5.4", features = ["serde"] }
 uuid = { version = "1.10.0", features = ["serde", "v4"] }

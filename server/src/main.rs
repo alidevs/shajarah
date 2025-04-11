@@ -27,6 +27,7 @@ use sqlx::PgPool;
 use std::net::{Ipv4Addr, SocketAddrV4};
 use tower_cookies::{CookieManagerLayer, Key};
 use tower_http::{cors::CorsLayer, limit::RequestBodyLimitLayer, services::ServeDir};
+use url::Url;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -69,6 +70,7 @@ async fn main() {
 
                 let config = Config {
                     cookie_secret: secret,
+                    domain: Url::parse("http://example.com").unwrap(),
                 };
 
                 let config_str =
@@ -89,6 +91,7 @@ async fn main() {
         inner: Arc::new(InnerAppState {
             db_pool: pool,
             cookies_secret: Key::from(config.cookie_secret.as_bytes()),
+            domain: config.domain,
         }),
     };
 
