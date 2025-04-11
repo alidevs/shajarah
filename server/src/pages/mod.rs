@@ -1,16 +1,20 @@
+use crate::api::members::models::RequestStatus;
 use std::sync::Arc;
 
 use askama::Template;
 use axum::{
     extract::{Query, State},
     response::{IntoResponse, Redirect},
+    Json,
 };
+use serde::Deserialize;
 
 use crate::{
     api::{
         members::{
-            routes::{get_members_flat, FlatMembersParams},
-            MemberResponseBrief, MembersError,
+            models::{MemberResponseBrief, RequestedMemberResponseBrief},
+            routes::{get_members_flat, get_requested_members_flat, FlatMembersParams},
+            MembersError,
         },
         users::models::UserRole,
     },
@@ -55,26 +59,45 @@ impl IntoResponse for PagesError {
 pub struct AdminTemplate {
     name: String,
     members: Vec<MemberResponseBrief>,
-    query: Option<String>,
+    add_requests: Vec<RequestedMemberResponseBrief>,
+    members_query: Option<String>,
+    requests_query: Option<String>,
+}
+
+serde_with::with_prefix!(prefix_members "members_");
+serde_with::with_prefix!(prefix_requests "requests_");
+
+#[derive(Deserialize)]
+pub struct AdminParams {
+    #[serde(flatten, with = "prefix_members")]
+    members_params: FlatMembersParams,
+    #[serde(flatten, with = "prefix_requests")]
+    requests_params: FlatMembersParams,
 }
 
 pub async fn admin_page(
     auth: Result<AuthExtractor<{ UserRole::Admin as u8 }>, AuthError>,
     state: State<Arc<InnerAppState>>,
-    params: Query<FlatMembersParams>,
+    params: Query<AdminParams>,
 ) -> Result<impl IntoResponse, PagesError> {
     match auth {
         Ok(auth) => {
-            let query = params.0.query.clone();
-            let members = match get_members_flat(state, params).await {
-                Ok(members) => members,
-                Err(MembersError::NoMembers) => Vec::new().into(),
-                Err(e) => return Err(e.into()),
-            };
+            let members_query = params.0.members_params.query.clone();
+            let Json(members) =
+                match get_members_flat(state.clone(), Query(params.0.members_params)).await {
+                    Ok(members) => members,
+                    Err(MembersError::NoMembers) => Vec::new().into(),
+                    Err(e) => return Err(e.into()),
+                };
+            let requests_query = params.0.requests_params.query.clone();
+            let Json(add_requests) =
+                get_requested_members_flat(state, Query(params.0.requests_params)).await?;
             Ok(AdminTemplate {
                 name: auth.current_user.username,
-                members: members.0.into_iter().rev().collect(),
-                query,
+                members,
+                add_requests,
+                members_query,
+                requests_query,
             }
             .into_response())
         }
@@ -107,4 +130,23 @@ pub struct RegisterTemplate;
 
 pub async fn register_page() -> RegisterTemplate {
     RegisterTemplate
+}
+
+#[derive(Template)]
+#[template(path = "add-request.html")]
+pub struct AddRequestTemplate {
+    members: Vec<MemberResponseBrief>,
+}
+
+pub async fn add_request_page(
+    state: State<Arc<InnerAppState>>,
+    params: Query<FlatMembersParams>,
+) -> Result<AddRequestTemplate, PagesError> {
+    let Json(members) = match get_members_flat(state, params).await {
+        Ok(members) => members,
+        Err(MembersError::NoMembers) => Vec::new().into(),
+        Err(e) => return Err(e.into()),
+    };
+
+    Ok(AddRequestTemplate { members })
 }

@@ -10,13 +10,14 @@ use rand::Rng;
 use server::{
     api::{
         members::routes::{
-            add_member, delete_member, edit_member, export_members, get_members, get_members_flat,
+            add_member, approve_member_request, delete_member, disapprove_member_request,
+            edit_member, export_members, get_members, get_members_flat, request_add_member,
             upload_members_csv,
         },
         sessions::refresh_session,
         users::routes::{login, logout, me},
     },
-    pages::{admin_page, login_page, register_page},
+    pages::{add_request_page, admin_page, login_page, register_page},
     AppState, Config, ConfigError, InnerAppState,
 };
 
@@ -99,11 +100,18 @@ async fn main() {
         .route("/admin", get(admin_page))
         .route("/login", get(login_page))
         .route("/register", get(register_page))
+        .route("/add", get(add_request_page))
         .route("/api/members", get(get_members).post(add_member))
         .route("/api/members/:id", put(edit_member).delete(delete_member))
         .route("/api/members/flat", get(get_members_flat))
         .route("/api/members/export", get(export_members))
         .route("/api/members/import", post(upload_members_csv))
+        .route("/api/members/add-request", post(request_add_member))
+        .route("/api/members/approve/:id", put(approve_member_request))
+        .route(
+            "/api/members/disapprove/:id",
+            put(disapprove_member_request),
+        )
         .route("/api/users/logout", get(logout))
         .route("/api/users/login", post(login))
         .route("/api/users/me", get(me))

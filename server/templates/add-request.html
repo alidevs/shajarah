@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div dir="rtl" class="min-h-screen flex items-center justify-center bg-gray-100 p-8">
+  <form id="submit-info-form" onsubmit="submitInfo(event)"
+    class="bg-white p-8 rounded shadow-md w-full max-w-xl space-y-4" enctype="multipart/form-data">
+    <h2 class="text-2xl font-bold text-center">تقديم معلومات فرد العائلة</h2>
+
+    <div>
+      <label class="block mb-1">الاسم:</label>
+      <input name="name" type="text" class="w-full border rounded px-3 py-2" required />
+    </div>
+
+    <div>
+      <label class="block mb-1">الاسم الاخير:</label>
+      <input name="last_name" type="text" class="w-full border rounded px-3 py-2" required />
+    </div>
+
+    <div>
+      <label class="block mb-1">الجنس:</label>
+      <select name="gender" class="w-full border rounded px-3 py-2" required>
+        <option selected value>-- اختر الجنس --</option>
+        <option value="male">ذكر</option>
+        <option value="female">انثى</option>
+      </select>
+    </div>
+
+    <div>
+      <label class="block mb-1">تاريخ الولادة:</label>
+      <input name="birthday" type="date" class="w-full border rounded px-3 py-2" required />
+    </div>
+
+    <div>
+      <label class="block mb-1">معرف الأب:</label>
+      <input name="father_id" id="new-father_id" type="text" list="new-father_ids"
+        class="w-full border rounded px-3 py-2" required />
+      <datalist id="new-father_ids">
+        {% for member in members %}
+        {% if member.gender == "male" %}
+        <option value="{{member.id}}">{{ member.id }} {{ member.name }}</option>
+        {% endif %}
+        {% endfor %}
+      </datalist>
+    </div>
+
+    <div>
+      <label class="block mb-1">معلومات إضافية:</label>
+      <div id="extra-info-pairs" class="space-y-2"></div>
+      <button type="button" onclick="addExtraInfoPair()" class="text-blue-600 hover:underline">+ إضافة حقل</button>
+    </div>
+
+    <div>
+      <label class="block mb-1">صورة (اختياري):</label>
+      <input name="image" type="file" accept="image/*" class="w-full" />
+    </div>
+
+    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded w-full">إرسال
+      للمراجعة</button>
+
+    <div id="submit-message" class="text-center text-green-600 font-semibold hidden">
+      تم إرسال المعلومات بنجاح! شكراً لمساهمتك.
+    </div>
+  </form>
+</div>
+
+<script>
+  function addExtraInfoPair() {
+    const container = document.getElementById('extra-info-pairs');
+    const div = document.createElement('div');
+    div.className = "flex gap-2";
+    div.innerHTML = `
+      <input type="text" placeholder="مثال: المهنة" class="border rounded px-3 py-1 key" />
+      <input type="text" placeholder="مثال: محامي" class="border rounded px-3 py-1 value" />
+      <button type="button" onclick="this.parentElement.remove()" class="text-red-600 hover:underline">✕</button>
+    `;
+    container.appendChild(div);
+  }
+
+  function collectExtraInfoAsJson() {
+    const pairs = document.querySelectorAll('#extra-info-pairs > div');
+    const result = {};
+    pairs.forEach(pair => {
+      const key = pair.querySelector('.key').value.trim();
+      const value = pair.querySelector('.value').value.trim();
+      if (key) result[key] = value;
+    });
+    return JSON.stringify(result);
+  }
+
+  function submitInfo(event) {
+    event.preventDefault();
+    const form = document.getElementById('submit-info-form');
+    const formData = new FormData(form);
+    const image = formData.get("image");
+
+    if (image.size === 0 || image.name === "" || image.type === "application/octet-stream") {
+      formData.delete("image");
+    }
+
+    const extraInfoJson = collectExtraInfoAsJson();
+    formData.append('info', extraInfoJson);
+
+    fetch('/api/members/add-request', {
+      method: 'POST',
+      body: formData
+    })
+      .then(response => {
+        if (response.ok) {
+          form.reset();
+          document.getElementById('extra-info-pairs').innerHTML = '';
+          document.getElementById('submit-message').classList.remove('hidden');
+        } else {
+          alert("حدث خطأ أثناء الإرسال.");
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('حدث خطأ يرجى المحاولة لاحقاً.');
+      });
+  }
+</script>
+{% endblock %}

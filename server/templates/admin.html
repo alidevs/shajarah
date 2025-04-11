@@ -81,15 +81,17 @@
       </form>
     </div>
 
-    <div class="flex gap-2 items-center">
-      {% match query %}
-      {% when Some with (query) %}
-      <input dir="auto" id="search-bar" type="text" value="{{ query }}" class="border px-3 py-2 rounded w-full" />
-      {% when None %}
-      <input dir="auto" id="search-bar" type="text" class="border px-3 py-2 rounded w-full" />
-      {% endmatch %}
-      <button id="search-button" onclick="search()"
-        class="bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded">ابحث</button>
+    <div>
+      <form class="flex items-center gap-2" id="members-search" onsubmit="members_search(event)">
+        {% match members_query %}
+        {% when Some with (query) %}
+        <input name="query" dir="auto" id="search-bar" type="text" value="{{ query }}"
+          class="border px-3 py-2 rounded w-full" />
+        {% when None %}
+        <input name="query" dir="auto" id="search-bar" type="text" class="border px-3 py-2 rounded w-full" />
+        {% endmatch %}
+        <button id="search-button" class="bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded">ابحث</button>
+      </form>
     </div>
 
     <div class="overflow-auto">
@@ -297,61 +299,221 @@
     </div>
 
     <div class="flex justify-between mt-4">
-      <button onclick="prev_page()" class="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded">الصفحة السابقة</button>
-      <button onclick="next_page()" class="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded">الصفحة التالية</button>
+      <button onclick="members_prev_page()" class="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded">الصفحة
+        السابقة</button>
+      <button onclick="members_next_page()" class="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded">الصفحة
+        التالية</button>
+    </div>
+
+  </div>
+
+  <div class="bg-white p-6 rounded shadow space-y-4">
+
+    <h2 class="text-xl font-bold mb-2">
+      طلبات إضافة الأفراد
+    </h2>
+
+    <div>
+      <form class="flex gap-2 items-center" id="requests-search" onsubmit="requests_search(event)">
+        {% match requests_query %}
+        {% when Some with (query) %}
+        <input name="query" dir="auto" id="search-bar" type="text" value="{{ query }}"
+          class="border px-3 py-2 rounded w-full" />
+        {% when None %}
+        <input name="query" dir="auto" id="search-bar" type="text" class="border px-3 py-2 rounded w-full" />
+        {% endmatch %}
+        <button id="search-button" class="bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded">ابحث</button>
+      </form>
+    </div>
+
+    <div class="overflow-auto">
+      <table class="table-auto w-full border border-gray-300 mt-4 text-center">
+        <thead class="bg-gray-200">
+          <tr>
+            <th class="p-2 border">معرف الطلب</th>
+            <th class="p-2 border">الاسم</th>
+            <th class="p-2 border">الاسم الاخير</th>
+            <th class="p-2 border">الجنس</th>
+            <th class="p-2 border">تاريخ الولادة</th>
+            <th class="p-2 border">معرف الاب</th>
+            <th class="p-2 border">معرف الام</th>
+            <th class="p-2 border">معلومات شخصية</th>
+            <th class="p-2 border">الصورة</th>
+            <th colspan="2" class="p-2 border">إجراءات</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for requested_member in add_requests %}
+          {% if requested_member.status == RequestStatus::Pending %}
+          <tr>
+            <td class="p-2 border">{{ requested_member.id|e }}</td>
+            <td class="p-2 border">{{ requested_member.name|e }}</td>
+            <td class="p-2 border">{{ requested_member.last_name|e }}</td>
+            {% if requested_member.gender == "male" %}
+            <td class="p-2 border">ذكر</td>
+            {% else if requested_member.gender == "female" %}
+            <td class="p-2 border">انثى</td>
+            {% endif %}
+            {% match requested_member.birthday %}
+            {% when Some with (birthday) %}
+            <td class="p-2 border">{{ birthday|e }}</td>
+            {% when None %}
+            <td class="p-2 border">NULL</td>
+            {% endmatch %}
+            {% match requested_member.father_id %}
+            {% when Some with (father_id) %}
+            <td class="p-2 border">{{ father_id|e }}</td>
+            {% when None %}
+            <td class="p-2 border">NULL</td>
+            {% endmatch %}
+            {% match requested_member.mother_id %}
+            {% when Some with (mother_id) %}
+            <td class="p-2 border">{{ mother_id|e }}</td>
+            {% when None %}
+            <td class="p-2 border">NULL</td>
+            {% endmatch %}
+            {% match requested_member.personal_info %}
+            {% when Some with (personal_info) %}
+            <td class="p-2 border">
+              {% for (key, value) in personal_info %}
+              <span>{{key}}: {{value}}</span>
+              {% endfor %}
+            </td>
+            {% when None %}
+            <td class="p-2 border">NULL</td>
+            {% endmatch %}
+            {% match requested_member.image %}
+            {% when Some with (image) %}
+            {% match requested_member.image_type %}
+            {% when Some with (image_type) %}
+            <td class="p-2 border" style="max-width: 10rem;">
+              <img style="max-width: 100%;" src="data:{{ image_type }};base64, {{ image|bytes_to_base64 }}" />
+            </td>
+            {% when None %}
+            <td class="p-2 border">NULL</td>
+            {% endmatch %}
+            {% when None %}
+            <td class="p-2 border">NULL</td>
+            {% endmatch %}
+            <td class="p-2 border">
+              <button class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded"
+                onclick="confirm_disapprove('{{ requested_member.id }}')">الرفض</button>
+            </td>
+            <td class="p-2 border">
+              <button class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded"
+                onclick="confirm_approve('{{ requested_member.id }}')">القبول</button>
+            </td>
+          </tr>
+          {% endif %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="flex justify-between mt-4">
+      <button onclick="requests_prev_page()" class="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded">الصفحة
+        السابقة</button>
+      <button onclick="requests_next_page()" class="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded">الصفحة
+        التالية</button>
     </div>
   </div>
 </div>
 
 <script>
-  const searchInput = document.getElementById("search-bar");
+  async function members_search(e) {
+    e.preventDefault();
+    let formData = new FormData(e.target);
 
-  searchInput.addEventListener("keypress", function (event) {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      document.getElementById("search-button").click();
-    }
-  });
-
-  async function search() {
     if ('URLSearchParams' in window) {
       let searchParams = new URLSearchParams(window.location.search);
-      if (searchInput.value == "") {
-        if (searchParams.has("query")) {
-          searchParams.delete("query");
+      const query = formData.get("query");
+      if (query == "") {
+        if (searchParams.has("members_query")) {
+          searchParams.delete("members_query");
           window.location.search = searchParams.toString();
         }
       } else {
-        searchParams.set("query", searchInput.value);
+        searchParams.set("members_query", query);
         window.location.search = searchParams.toString();
       }
     }
   }
 
-  async function next_page() {
+  async function requests_search(e) {
+    e.preventDefault();
+    let formData = new FormData(e.target);
+
     if ('URLSearchParams' in window) {
       let searchParams = new URLSearchParams(window.location.search);
-      const currentPage = parseInt(searchParams.get("page"));
-      if (Number.isNaN(currentPage)) {
-        searchParams.append("page", "1");
-        window.location.search = searchParams.toString();
+      const query = formData.get("query");
+      if (query == "") {
+        if (searchParams.has("requests_query")) {
+          searchParams.delete("requests_query");
+          window.location.search = searchParams.toString();
+        }
       } else {
-        searchParams.set("page", currentPage + 1);
+        searchParams.set("requests_query", query);
         window.location.search = searchParams.toString();
       }
     }
   }
 
-  async function prev_page() {
+  async function members_next_page() {
     if ('URLSearchParams' in window) {
       let searchParams = new URLSearchParams(window.location.search);
-      const currentPage = parseInt(searchParams.get("page"));
+      const currentPage = parseInt(searchParams.get("members_page"));
       if (Number.isNaN(currentPage)) {
-        searchParams.append("page", "0");
+        searchParams.append("members_page", "1");
         window.location.search = searchParams.toString();
       } else {
-        searchParams.set("page", Math.max(currentPage - 1, 0));
+        searchParams.set("members_page", currentPage + 1);
         window.location.search = searchParams.toString();
+      }
+    }
+  }
+
+  async function members_prev_page() {
+    if ('URLSearchParams' in window) {
+      let searchParams = new URLSearchParams(window.location.search);
+      const currentPage = parseInt(searchParams.get("members_page"));
+      if (Number.isNaN(currentPage)) {
+        searchParams.append("members_page", "0");
+        window.location.search = searchParams.toString();
+      } else {
+        if (currentPage !== 0) {
+          searchParams.set("members_page", Math.max(currentPage - 1, 0));
+          window.location.search = searchParams.toString();
+        }
+      }
+    }
+  }
+
+  async function requests_next_page() {
+    if ('URLSearchParams' in window) {
+      let searchParams = new URLSearchParams(window.location.search);
+      const currentPage = parseInt(searchParams.get("requests_page"));
+      if (Number.isNaN(currentPage)) {
+        searchParams.append("requests_page", "1");
+        window.location.search = searchParams.toString();
+      } else {
+        searchParams.set("requests_page", currentPage + 1);
+        window.location.search = searchParams.toString();
+      }
+    }
+  }
+
+  async function requests_prev_page() {
+    if ('URLSearchParams' in window) {
+      let searchParams = new URLSearchParams(window.location.search);
+      const currentPage = parseInt(searchParams.get("requests_page"));
+      if (Number.isNaN(currentPage)) {
+        searchParams.append("requests_page", "0");
+        window.location.search = searchParams.toString();
+      } else {
+        if (currentPage !== 0) {
+          searchParams.set("requests_page", Math.max(currentPage - 1, 0));
+          window.location.search = searchParams.toString();
+        }
       }
     }
   }
@@ -424,6 +586,38 @@
   async function delete_member(id) {
     const response = await fetch(`/api/members/${id}`, {
       method: "DELETE",
+    });
+
+    if (response.status === 200) {
+      location.reload();
+    }
+  }
+
+  function confirm_disapprove(id) {
+    if (confirm("هل أنت متأكد أنك تريد رفض هذا العضو؟")) {
+      disapprove_request(id);
+    }
+  }
+
+  async function disapprove_request(id) {
+    const response = await fetch(`/api/members/disapprove/${id}`, {
+      method: "PUT",
+    });
+
+    if (response.status === 200) {
+      location.reload();
+    }
+  }
+
+  function confirm_approve(id) {
+    if (confirm("هل أنت متأكد أنك تريد قبول هذا العضو؟")) {
+      approve_request(id);
+    }
+  }
+
+  async function approve_request(id) {
+    const response = await fetch(`/api/members/approve/${id}`, {
+      method: "PUT",
     });
 
     if (response.status === 200) {
