@@ -1,3 +1,4 @@
+use ar_reshaper::letters::letters_db::LETTERS_ARABIC;
 use ar_reshaper::{config::LigaturesFlags, ArabicReshaper, ReshaperConfig};
 use egui::epaint::PathStroke;
 use egui::{
@@ -259,18 +260,13 @@ impl Node {
                                     .rev()
                                     .collect::<String>(),
                             );
+
                             for (key, value) in personal_info {
+                                let key = fix_arabic(&format!("{key}: "));
+                                let value = fix_arabic(&value);
                                 ui.horizontal(|ui| {
-                                    ui.label(
-                                        RESHAPER
-                                            .reshape(format!("{key}: "))
-                                            .chars()
-                                            .rev()
-                                            .collect::<String>(),
-                                    );
-                                    ui.label(
-                                        RESHAPER.reshape(value).chars().rev().collect::<String>(),
-                                    );
+                                    ui.label(key);
+                                    ui.label(value);
                                 });
                             }
                         }
@@ -404,5 +400,82 @@ impl Node {
             Stroke::new(1., Color32::GREEN),
             StrokeKind::Middle,
         );
+    }
+}
+
+/// workaround to fix arabic words until egui has better RTL rendering
+fn fix_arabic(input: &str) -> String {
+    let input = RESHAPER.reshape(input);
+    let mut output = String::with_capacity(input.len());
+    let mut ar_buffer = String::new();
+    let mut in_arabic_block = false;
+
+    let mut chars = input.chars().peekable();
+
+    while let Some(c) = chars.next() {
+        let is_arabic_char = LETTERS_ARABIC.iter().any(|l| {
+            l.0 == c || l.1.isolated == c || l.1.initial == c || l.1.medial == c || l.1.end == c
+        });
+
+        if is_arabic_char {
+            ar_buffer.push(c);
+            in_arabic_block = true;
+        } else if in_arabic_block && (c.is_whitespace() || is_symbol(c)) {
+            ar_buffer.push(c);
+        } else {
+            if in_arabic_block {
+                output.extend(ar_buffer.chars().rev());
+                ar_buffer.clear();
+                in_arabic_block = false;
+            }
+            output.push(c);
+        }
+    }
+
+    if in_arabic_block {
+        output.extend(ar_buffer.chars().rev());
+    }
+
+    output
+}
+
+/// a non-exhaustive check of symbols
+fn is_symbol(c: char) -> bool {
+    matches!(
+        c,
+        ':' | '?'
+            | '؟'
+            | '،'
+            | '.'
+            | ','
+            | ';'
+            | '!'
+            | 'ـ'
+            | '"'
+            | '\''
+            | '('
+            | ')'
+            | '['
+            | ']'
+            | '{'
+            | '}'
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_rev_arabic_only_arabic() {
+        let input = String::from("السلام عليكم جميعا");
+
+        let shaped = RESHAPER.reshape(&input);
+
+        let output = fix_arabic(&shaped);
+
+        let expected = String::from("ﺎﻌﻴﻤﺟ ﻢﻜﻴﻠﻋ ﻡﺎﻠﺴﻟﺍ");
+
+        assert_eq!(output, expected);
     }
 }
