@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{path::PathBuf, sync::Arc};
 
 use axum::{
     extract::FromRef,
@@ -46,7 +46,13 @@ pub struct Config {
 impl Config {
     pub fn load_config() -> Result<Self, ConfigError> {
         log::info!("getting config file");
-        let config_file = std::fs::read_to_string("config.toml")?;
+        let config_path = std::env::var("SHAJARAH_CONFIG_PATH").unwrap_or_default();
+
+        let mut config_path = PathBuf::from(config_path);
+
+        config_path.set_file_name("config.toml");
+
+        let config_file = std::fs::read_to_string(config_path)?;
         toml::from_str::<Config>(&config_file).map_err(Into::into)
     }
 }
