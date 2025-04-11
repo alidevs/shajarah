@@ -4,8 +4,7 @@ use sqlx::prelude::FromRow;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Copy, sqlx::Type, Serialize, Deserialize)]
-#[sqlx(type_name = "userrole")]
-#[sqlx(rename_all = "snake_case")]
+#[sqlx(type_name = "UserRole", rename_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
 pub enum UserRole {
     Admin = 0,

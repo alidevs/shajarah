@@ -183,7 +183,22 @@ pub async fn create_user(
     State(state): State<Arc<InnerAppState>>,
     Json(payload): Json<CreateUser>,
 ) -> Result<Json<UserResponse>, UsersError> {
+    // TODO: garde
     // payload.validate(&())?;
+    if sqlx::query(
+        r#"
+SELECT id, role FROM users
+WHERE role = $1
+        "#,
+    )
+    .bind(UserRole::Admin)
+    .fetch_optional(&state.db_pool)
+    .await?
+    .is_some()
+    {
+        return Err(UsersError::BadRequest);
+    }
+
     if payload.username.is_empty() || payload.password.is_empty() || payload.email.is_empty() {
         return Err(UsersError::BadRequest);
     }

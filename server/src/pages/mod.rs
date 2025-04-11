@@ -91,6 +91,20 @@ pub async fn admin_page(
 #[template(path = "login.html")]
 pub struct LoginTemplate;
 
-pub async fn login_page() -> LoginTemplate {
-    LoginTemplate
+pub async fn login_page(
+    auth: Option<Result<AuthExtractor<{ UserRole::Admin as u8 }>, AuthError>>,
+) -> impl IntoResponse {
+    if auth.is_some_and(|a| a.is_ok()) {
+        return Redirect::to("/admin").into_response();
+    }
+
+    LoginTemplate.into_response()
+}
+
+#[derive(Template)]
+#[template(path = "register.html")]
+pub struct RegisterTemplate;
+
+pub async fn register_page() -> RegisterTemplate {
+    RegisterTemplate
 }

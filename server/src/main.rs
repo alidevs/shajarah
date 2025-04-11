@@ -16,11 +16,10 @@ use server::{
         sessions::refresh_session,
         users::routes::{login, logout, me},
     },
-    pages::{admin_page, login_page},
+    pages::{admin_page, login_page, register_page},
     AppState, Config, ConfigError, InnerAppState,
 };
 
-#[cfg(debug_assertions)]
 use server::api::users::routes::create_user;
 
 use clap::Parser;
@@ -96,6 +95,7 @@ async fn main() {
     let mut app = Router::new()
         .route("/admin", get(admin_page))
         .route("/login", get(login_page))
+        .route("/register", get(register_page))
         .route("/api/members", get(get_members).post(add_member))
         .route("/api/members/:id", put(edit_member).delete(delete_member))
         .route("/api/members/flat", get(get_members_flat))
@@ -103,16 +103,14 @@ async fn main() {
         .route("/api/members/import", post(upload_members_csv))
         .route("/api/users/logout", get(logout))
         .route("/api/users/login", post(login))
-        .route("/api/users/me", get(me));
+        .route("/api/users/me", get(me))
+        .route("/api/users", post(create_user));
 
     if let Ok(dist) = std::env::var("SHAJARAH_DIST") {
         app = app.nest_service("/", ServeDir::new(dist));
     } else if let Some(dist) = option_env!("SHAJARAH_DIST") {
         app = app.nest_service("/", ServeDir::new(dist));
     }
-
-    #[cfg(debug_assertions)]
-    let app = app.route("/api/users", post(create_user));
 
     let app = app
         .layer(

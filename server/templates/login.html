@@ -1,77 +1,45 @@
-<!DOCTYPE html>
-<html>
+{% extends "base.html" %}
 
-<head>
-  <title>Login</title>
-</head>
+{% block content %}
+<div dir="rtl" class="min-h-screen flex items-center justify-center bg-gray-100 p-6">
+  <form onsubmit="submitLogin(event)" class="bg-white p-8 rounded shadow-md w-full max-w-md space-y-4">
+    <h2 class="text-2xl font-bold text-center">تسجيل الدخول</h2>
 
-<body>
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-    }
-
-    #form-container {
-      height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      flex-direction: column;
-    }
-
-    .field {
-      width: 14.5rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    input[type=text],
-    input[type=password] {
-      width: 10rem;
-    }
-  </style>
-
-  <div dir="rtl" id="form-container">
-    <div class="field" dir="rtl">
-      <label for="email">البريد:</label>
-      <input id="email" type="text" />
+    <div>
+      <label class="block mb-1">البريد الإلكتروني:</label>
+      <input dir="auto" name="email" type="email" required class="w-full border rounded px-3 py-2" />
     </div>
-    <div class="field" dir="rtl">
-      <label for="password">كلمة المرور:</label>
-      <input id="password" type="password" />
+
+    <div>
+      <label class="block mb-1">كلمة المرور:</label>
+      <input dir="auto" name="password" type="password" required class="w-full border rounded px-3 py-2" />
     </div>
-    <button onclick="login()">تسجيل الدخول</button>
-  </div>
 
-  <script>
-    async function login() {
-      const emailElement = document.getElementById("email");
-      const passwordElement = document.getElementById("password");
+    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded">تسجيل الدخول</button>
 
-      const response = await fetch("/api/users/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({email: emailElement.value, password: passwordElement.value}),
-      });
+    <p class="text-sm text-center mt-2">
+      لا تملك حساباً؟ <a href="/register" class="text-blue-600 hover:underline">أنشئ حساب</a>
+    </p>
+  </form>
+</div>
 
-      if (response.status == 200) {
-        window.location.href = "/admin";
-      }
+<script>
+  async function submitLogin(event) {
+    event.preventDefault();
+    const form = event.target;
+    const data = Object.fromEntries(new FormData(form).entries());
+
+    const response = await fetch("/api/users/login", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(data)
+    });
+
+    if (response.ok) {
+      window.location.href = "/admin";
+    } else {
+      alert("فشل تسجيل الدخول");
     }
-
-    const form_container = document.getElementById("form-container");
-    for (const child of form_container.childNodes) {
-      child.addEventListener("keypress", function (e) {
-        if (e.key === "Enter") {
-          login();
-        }
-      });
-    }
-  </script>
-</body>
-
-</html>
+  }
+</script>
+{% endblock %}
