@@ -29,26 +29,28 @@
       <div><label class="block mb-1">تاريخ الولادة:</label><input dir="auto" name="birthday" type="date"
           class="w-full border rounded px-3 py-2" /></div>
       <div>
-        <label class="block mb-1">معرف الام:</label>
-        <select name="mother_id" class="w-full border rounded px-3 py-2">
-          <option selected value>-- اختر المعرف --</option>
+        <label for="new-mother_id" class="block mb-1">معرف الام:</label>
+        <input name="mother_id" type="text" id="new-mother_id" list="new-mother_ids"
+          class="w-full border rounded px-3 py-2" />
+        <datalist id="new-mother_ids">
           {% for member in members %}
           {% if member.gender == "female" %}
           <option value="{{member.id}}">{{ member.id }} {{ member.name }}</option>
           {% endif %}
           {% endfor %}
-        </select>
+        </datalist>
       </div>
       <div>
-        <label class="block mb-1">معرف الاب:</label>
-        <select name="father_id" class="w-full border rounded px-3 py-2">
-          <option selected value>-- اختر المعرف --</option>
+        <label for="new-father_id" class="block mb-1">معرف الاب:</label>
+        <input name="father_id" id="new-father_id" type="text" list="new-father_ids"
+          class="w-full border rounded px-3 py-2" />
+        <datalist id="new-father_ids">
           {% for member in members %}
           {% if member.gender == "male" %}
           <option value="{{member.id}}">{{ member.id }} {{ member.name }}</option>
           {% endif %}
           {% endfor %}
-        </select>
+        </datalist>
       </div>
     </div>
 
@@ -202,14 +204,16 @@
                   {% endmatch %}
                 </div>
                 <div>
-                  <label for="edit-member-mother-id">معرف الام:</label>
-                  <select class="w-full border rounded px-3 py-2" id="edit-member-mother-id" name="mother_id">
-                    {% if member.mother_id.is_none() %}
-                    <option selected value> -- اختر المعرف -- </option>
-                    {% else %}
-                    <option value> -- اختر المعرف -- </option>
-                    {% endif %}
-
+                  <label for="edit-mother_id">معرف الام:</label>
+                  {% match member.mother_id %}
+                  {% when Some with (mother_id) %}
+                  <input name="mother_id" id="edit-mother_id" type="text" list="edit-mother_ids"
+                    class="w-full border rounded px-3 py-2" value="{{mother_id}}" />
+                  {% when None %}
+                  <input name="mother_id" id="edit-mother_id" type="text" list="edit-mother_ids"
+                    class="w-full border rounded px-3 py-2" />
+                  {% endmatch %}
+                  <datalist id="edit-mother_ids">
                     {% for other_member in members %}
                     {% if other_member.gender == "female" %}
                     {% match member.mother_id %}
@@ -226,17 +230,19 @@
                     {% endmatch %}
                     {% endif %}
                     {% endfor %}
-                  </select>
+                  </datalist>
                 </div>
                 <div>
-                  <label for="edit-member-mother-id">معرف الاب:</label>
-                  <select class="w-full border rounded px-3 py-2" id="edit-member-father-id" name="father_id">
-                    {% if member.father_id.is_none() %}
-                    <option selected value> -- اختر المعرف -- </option>
-                    {% else %}
-                    <option value> -- اختر المعرف -- </option>
-                    {% endif %}
-
+                  <label for="edit-father_id">معرف الاب:</label>
+                  {% match member.father_id %}
+                  {% when Some with (father_id) %}
+                  <input name="father_id" id="edit-father_id" type="text" list="edit-father_ids"
+                    class="w-full border rounded px-3 py-2" value="{{father_id}}" />
+                  {% when None %}
+                  <input name="father_id" id="edit-father_id" type="text" list="edit-father_ids"
+                    class="w-full border rounded px-3 py-2" />
+                  {% endmatch %}
+                  <datalist id="edit-father_ids">
                     {% for other_member in members %}
                     {% if other_member.gender == "male" %}
                     {% match member.father_id %}
@@ -253,7 +259,7 @@
                     {% endmatch %}
                     {% endif %}
                     {% endfor %}
-                  </select>
+                  </datalist>
                 </div>
                 <div>
                   <label for="edit-member-info">المعلومات الشخصية:</label>
