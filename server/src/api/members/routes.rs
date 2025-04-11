@@ -232,7 +232,11 @@ pub async fn add_member(
     let mut limit = FIELDS_LIMIT;
     let mut create_member_builder = CreateMemberBuilder::new();
 
-    while let Some(field) = multipart.next_field().await.unwrap() {
+    while let Some(field) = multipart
+        .next_field()
+        .await
+        .map_err(|_e| MembersError::SomethingWentWrong)?
+    {
         match field.name() {
             Some("name") => {
                 let Ok(name) = field.text().await else {
@@ -404,7 +408,11 @@ pub async fn edit_member(
     let mut limit = FIELDS_LIMIT;
     let mut update_member_builder = UpdateMemberBuilder::new();
 
-    while let Some(field) = multipart.next_field().await.unwrap() {
+    while let Some(field) = multipart
+        .next_field()
+        .await
+        .map_err(|_e| MembersError::SomethingWentWrong)?
+    {
         match field.name() {
             Some("name") => {
                 let Ok(name) = field.text().await else {
@@ -650,7 +658,7 @@ WHERE id = $1
         let info = sqlx::types::JsonValue::deserialize(serde::de::value::MapDeserializer::new(
             info.clone().into_iter(),
         ))
-        .unwrap();
+        .map_err(|_e| MembersError::SomethingWentWrong)?;
 
         sqlx::query(
             r#"
@@ -773,7 +781,11 @@ pub async fn upload_members_csv(
     State(state): State<Arc<InnerAppState>>,
     mut multipart: Multipart,
 ) -> Result<(), MembersError> {
-    while let Some(field) = multipart.next_field().await.unwrap() {
+    while let Some(field) = multipart
+        .next_field()
+        .await
+        .map_err(|_e| MembersError::SomethingWentWrong)?
+    {
         match field.name() {
             Some("members_csv") => {
                 let file_data = field.text().await.map_err(|e| {
