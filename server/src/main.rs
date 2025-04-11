@@ -53,10 +53,11 @@ async fn main() {
             .await
             .expect("Failed to connect to DB");
 
-    sqlx::migrate!()
-        .run(&pool)
-        .await
-        .expect("Failed to migrate DB");
+    if let Err(e) = sqlx::migrate!().run(&pool).await {
+        log::error!("Failed to migrate DB: {e}");
+
+        panic!("Failed to migrate DB");
+    }
 
     let config = match Config::load_config() {
         Ok(config) => config,
