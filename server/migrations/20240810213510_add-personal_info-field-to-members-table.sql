@@ -1,3 +1,3 @@
 -- Add migration script here
 ALTER TABLE members
-ADD personal_info jsonb;
+ADD IF NOT EXISTS personal_info jsonb;
