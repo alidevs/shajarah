@@ -25,16 +25,18 @@
         };
         craneLib = ((crane.mkLib pkgs).overrideToolchain rustToolchainFor);
 
-        src = lib.cleanSourceWith {
-          src = ./.;
-          filter = path: type:
-            (lib.hasSuffix "\.html" path) ||
-            (lib.hasSuffix "\.ttf" path) ||
-            (lib.hasSuffix "\.sql" path) ||
-            (lib.hasSuffix "\.scss" path) ||
-            (lib.hasInfix "/assets/" path) ||
-            (craneLib.filterCargoSources path type)
-          ;
+        unfilteredRoot = ./.;
+        src = lib.fileset.toSource {
+          root = unfilteredRoot;
+          fileset = lib.fileset.unions [
+            (craneLib.fileset.commonCargoSources unfilteredRoot)
+            (lib.fileset.fileFilter
+              (file: lib.any file.hasExt [ "html" "scss" "ttf" ])
+              unfilteredRoot
+            )
+            (lib.fileset.maybeMissing ./assets)
+            ./server/migrations
+          ];
         };
 
         commonArgs = {
