@@ -13,8 +13,8 @@ CREATE TABLE IF NOT EXISTS members
     last_name TEXT NOT NULL,
     image BYTEA,
     image_type TEXT,
-    mother_id INTEGER,
-    father_id INTEGER,
+    mother_id INT8,
+    father_id INT8,
 
    CONSTRAINT fk_mother
       FOREIGN KEY(mother_id)
