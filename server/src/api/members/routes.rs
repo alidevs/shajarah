@@ -7,7 +7,6 @@ use axum::{
 };
 use chrono::{NaiveDate, NaiveTime, Utc};
 use indexmap::IndexMap;
-use log::error;
 use serde::Deserialize;
 use serde_with::{serde_as, DisplayFromStr};
 use uuid::Uuid;
@@ -812,45 +811,34 @@ pub async fn upload_members_csv(
                     })
                     .collect::<Result<Vec<MemberRow>, MembersError>>()?;
 
-                for member in members {
-                    log::debug!("adding member: {member:?}");
-                    let Ok(query) = sqlx::query(
-                        r#"
-                                UPDATE members
-                                SET name = $1, last_name = $2, gender = $3, birthday = $4, mother_id = $5, father_id = $6
-                                WHERE id = $7
-                                RETURNING id
-                            "#,
-                    )
-                    .bind(&member.name)
-                    .bind(&member.last_name)
-                    .bind(member.gender)
-                    .bind(member.birthday)
-                    .bind(member.mother_id)
-                    .bind(member.father_id)
-                    .bind(member.id)
-                    .fetch_optional(&state.db_pool).await else {
-                        error!("failed to update member: {member:#?}");
-                        continue;
-                    };
+                let mut tx = state.db_pool.begin().await?;
 
-                    if query.is_none() {
-                        sqlx::query(
-                            r#"
-                                INSERT INTO members (id, name, last_name, gender, birthday, mother_id, father_id)
-                                VALUES ($1, $2, $3, $4, $5, $6, $7)
-                                "#,
-                        )
-                        .bind(member.id)
-                        .bind(&member.name)
-                        .bind(&member.last_name)
-                        .bind(member.gender)
-                        .bind(member.birthday)
-                        .bind(member.mother_id)
-                        .bind(member.father_id)
-                        .execute(&state.db_pool).await.ok();
-                    }
-                }
+                let mut query = sqlx::QueryBuilder::new("INSERT INTO members (id, name, last_name, gender, birthday, mother_id, father_id)");
+
+                query.push_values(members, |mut b, members| {
+                    b.push_bind(members.id)
+                        .push_bind(members.name)
+                        .push_bind(members.last_name)
+                        .push_bind(members.gender)
+                        .push_bind(members.birthday)
+                        .push_bind(members.mother_id)
+                        .push_bind(members.father_id);
+                });
+
+                query.push(r#"
+                    ON CONFLICT(id)
+                    DO UPDATE SET
+                    name = EXCLUDED.name, last_name = EXCLUDED.last_name, gender = EXCLUDED.gender,
+                    birthday = EXCLUDED.birthday, mother_id = EXCLUDED.mother_id, father_id = EXCLUDED.father_id
+                "#);
+
+                query.build().execute(&mut *tx).await?;
+
+                sqlx::query(r#"SELECT setval('members_id_seq', (SELECT MAX(id) FROM members));"#)
+                    .execute(&mut *tx)
+                    .await?;
+
+                tx.commit().await?;
             }
             Some(_) => {
                 continue;
