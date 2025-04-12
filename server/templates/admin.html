@@ -69,6 +69,117 @@
   </form>
 
   <div class="bg-white p-6 rounded shadow space-y-4">
+
+    <h2 class="text-xl font-bold mb-2">
+      طلبات إضافة الأفراد
+    </h2>
+
+    <div>
+      <form class="flex gap-2 items-center" id="requests-search" onsubmit="requests_search(event)">
+        {% match requests_query %}
+        {% when Some with (query) %}
+        <input name="query" dir="auto" id="search-bar" type="text" value="{{ query }}"
+          class="border px-3 py-2 rounded w-full" />
+        {% when None %}
+        <input name="query" dir="auto" id="search-bar" type="text" class="border px-3 py-2 rounded w-full" />
+        {% endmatch %}
+        <button id="search-button" class="bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded">ابحث</button>
+      </form>
+    </div>
+
+    <div class="overflow-auto">
+      <table class="table-auto w-full border border-gray-300 mt-4 text-center">
+        <thead class="bg-gray-200">
+          <tr>
+            <th class="p-2 border">معرف الطلب</th>
+            <th class="p-2 border">الاسم</th>
+            <th class="p-2 border">الاسم الاخير</th>
+            <th class="p-2 border">الجنس</th>
+            <th class="p-2 border">تاريخ الولادة</th>
+            <th class="p-2 border">معرف الاب</th>
+            <th class="p-2 border">معرف الام</th>
+            <th class="p-2 border">معلومات شخصية</th>
+            <th class="p-2 border">الصورة</th>
+            <th colspan="2" class="p-2 border">إجراءات</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for requested_member in add_requests %}
+          {% if requested_member.status == RequestStatus::Pending %}
+          <tr>
+            <td class="p-2 border">{{ requested_member.id|e }}</td>
+            <td class="p-2 border">{{ requested_member.name|e }}</td>
+            <td class="p-2 border">{{ requested_member.last_name|e }}</td>
+            {% if requested_member.gender == "male" %}
+            <td class="p-2 border">ذكر</td>
+            {% else if requested_member.gender == "female" %}
+            <td class="p-2 border">انثى</td>
+            {% endif %}
+            {% match requested_member.birthday %}
+            {% when Some with (birthday) %}
+            <td class="p-2 border">{{ birthday|e }}</td>
+            {% when None %}
+            <td class="p-2 border">NULL</td>
+            {% endmatch %}
+            {% match requested_member.father_id %}
+            {% when Some with (father_id) %}
+            <td class="p-2 border">{{ father_id|e }}</td>
+            {% when None %}
+            <td class="p-2 border">NULL</td>
+            {% endmatch %}
+            {% match requested_member.mother_id %}
+            {% when Some with (mother_id) %}
+            <td class="p-2 border">{{ mother_id|e }}</td>
+            {% when None %}
+            <td class="p-2 border">NULL</td>
+            {% endmatch %}
+            {% match requested_member.personal_info %}
+            {% when Some with (personal_info) %}
+            <td class="p-2 border">
+              {% for (key, value) in personal_info %}
+              <span>{{key}}: {{value}}</span>
+              {% endfor %}
+            </td>
+            {% when None %}
+            <td class="p-2 border">NULL</td>
+            {% endmatch %}
+            {% match requested_member.image %}
+            {% when Some with (image) %}
+            {% match requested_member.image_type %}
+            {% when Some with (image_type) %}
+            <td class="p-2 border" style="max-width: 10rem;">
+              <img style="max-width: 100%;" src="data:{{ image_type }};base64, {{ image|bytes_to_base64 }}" />
+            </td>
+            {% when None %}
+            <td class="p-2 border">NULL</td>
+            {% endmatch %}
+            {% when None %}
+            <td class="p-2 border">NULL</td>
+            {% endmatch %}
+            <td class="p-2 border">
+              <button class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded"
+                onclick="confirm_disapprove('{{ requested_member.id }}')">الرفض</button>
+            </td>
+            <td class="p-2 border">
+              <button class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded"
+                onclick="confirm_approve('{{ requested_member.id }}')">القبول</button>
+            </td>
+          </tr>
+          {% endif %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="flex justify-between mt-4">
+      <button onclick="requests_prev_page()" class="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded">الصفحة
+        السابقة</button>
+      <button onclick="requests_next_page()" class="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded">الصفحة
+        التالية</button>
+    </div>
+  </div>
+
+  <div class="bg-white p-6 rounded shadow space-y-4">
     <div class="flex flex-wrap items-center justify-between gap-4">
       <a href="/api/members/export" download="exported-members.csv">
         <button class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">تصدير قائمة العائلة</button>
@@ -305,117 +416,6 @@
         التالية</button>
     </div>
 
-  </div>
-
-  <div class="bg-white p-6 rounded shadow space-y-4">
-
-    <h2 class="text-xl font-bold mb-2">
-      طلبات إضافة الأفراد
-    </h2>
-
-    <div>
-      <form class="flex gap-2 items-center" id="requests-search" onsubmit="requests_search(event)">
-        {% match requests_query %}
-        {% when Some with (query) %}
-        <input name="query" dir="auto" id="search-bar" type="text" value="{{ query }}"
-          class="border px-3 py-2 rounded w-full" />
-        {% when None %}
-        <input name="query" dir="auto" id="search-bar" type="text" class="border px-3 py-2 rounded w-full" />
-        {% endmatch %}
-        <button id="search-button" class="bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded">ابحث</button>
-      </form>
-    </div>
-
-    <div class="overflow-auto">
-      <table class="table-auto w-full border border-gray-300 mt-4 text-center">
-        <thead class="bg-gray-200">
-          <tr>
-            <th class="p-2 border">معرف الطلب</th>
-            <th class="p-2 border">الاسم</th>
-            <th class="p-2 border">الاسم الاخير</th>
-            <th class="p-2 border">الجنس</th>
-            <th class="p-2 border">تاريخ الولادة</th>
-            <th class="p-2 border">معرف الاب</th>
-            <th class="p-2 border">معرف الام</th>
-            <th class="p-2 border">معلومات شخصية</th>
-            <th class="p-2 border">الصورة</th>
-            <th colspan="2" class="p-2 border">إجراءات</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for requested_member in add_requests %}
-          {% if requested_member.status == RequestStatus::Pending %}
-          <tr>
-            <td class="p-2 border">{{ requested_member.id|e }}</td>
-            <td class="p-2 border">{{ requested_member.name|e }}</td>
-            <td class="p-2 border">{{ requested_member.last_name|e }}</td>
-            {% if requested_member.gender == "male" %}
-            <td class="p-2 border">ذكر</td>
-            {% else if requested_member.gender == "female" %}
-            <td class="p-2 border">انثى</td>
-            {% endif %}
-            {% match requested_member.birthday %}
-            {% when Some with (birthday) %}
-            <td class="p-2 border">{{ birthday|e }}</td>
-            {% when None %}
-            <td class="p-2 border">NULL</td>
-            {% endmatch %}
-            {% match requested_member.father_id %}
-            {% when Some with (father_id) %}
-            <td class="p-2 border">{{ father_id|e }}</td>
-            {% when None %}
-            <td class="p-2 border">NULL</td>
-            {% endmatch %}
-            {% match requested_member.mother_id %}
-            {% when Some with (mother_id) %}
-            <td class="p-2 border">{{ mother_id|e }}</td>
-            {% when None %}
-            <td class="p-2 border">NULL</td>
-            {% endmatch %}
-            {% match requested_member.personal_info %}
-            {% when Some with (personal_info) %}
-            <td class="p-2 border">
-              {% for (key, value) in personal_info %}
-              <span>{{key}}: {{value}}</span>
-              {% endfor %}
-            </td>
-            {% when None %}
-            <td class="p-2 border">NULL</td>
-            {% endmatch %}
-            {% match requested_member.image %}
-            {% when Some with (image) %}
-            {% match requested_member.image_type %}
-            {% when Some with (image_type) %}
-            <td class="p-2 border" style="max-width: 10rem;">
-              <img style="max-width: 100%;" src="data:{{ image_type }};base64, {{ image|bytes_to_base64 }}" />
-            </td>
-            {% when None %}
-            <td class="p-2 border">NULL</td>
-            {% endmatch %}
-            {% when None %}
-            <td class="p-2 border">NULL</td>
-            {% endmatch %}
-            <td class="p-2 border">
-              <button class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded"
-                onclick="confirm_disapprove('{{ requested_member.id }}')">الرفض</button>
-            </td>
-            <td class="p-2 border">
-              <button class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded"
-                onclick="confirm_approve('{{ requested_member.id }}')">القبول</button>
-            </td>
-          </tr>
-          {% endif %}
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-
-    <div class="flex justify-between mt-4">
-      <button onclick="requests_prev_page()" class="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded">الصفحة
-        السابقة</button>
-      <button onclick="requests_next_page()" class="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded">الصفحة
-        التالية</button>
-    </div>
   </div>
 </div>
 
