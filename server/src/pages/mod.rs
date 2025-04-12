@@ -41,6 +41,12 @@ pub enum PagesError {
 
     #[error(transparent)]
     Members(#[from] MembersError),
+
+    #[error(transparent)]
+    Sqlx(#[from] sqlx::Error),
+
+    #[error("")]
+    NotFound,
 }
 
 impl IntoResponse for PagesError {
@@ -50,9 +56,19 @@ impl IntoResponse for PagesError {
         match self {
             PagesError::Auth(e) => e.into_response(),
             PagesError::Members(e) => e.into_response(),
+            PagesError::NotFound => NotFoundTemplate.into_response(),
+            PagesError::Sqlx(_) => SomethingWentWrongTemplate.into_response(),
         }
     }
 }
+
+#[derive(Template)]
+#[template(path = "404.html")]
+pub struct NotFoundTemplate;
+
+#[derive(Template)]
+#[template(path = "500.html")]
+pub struct SomethingWentWrongTemplate;
 
 #[derive(Template)]
 #[template(path = "admin.html")]
@@ -128,8 +144,24 @@ pub async fn login_page(
 #[template(path = "register.html")]
 pub struct RegisterTemplate;
 
-pub async fn register_page() -> RegisterTemplate {
-    RegisterTemplate
+pub async fn register_page(
+    state: State<Arc<InnerAppState>>,
+) -> Result<impl IntoResponse, PagesError> {
+    if sqlx::query(
+        r#"
+SELECT id, role FROM users
+WHERE role = $1
+        "#,
+    )
+    .bind(UserRole::Admin)
+    .fetch_optional(&state.db_pool)
+    .await?
+    .is_some()
+    {
+        return Err(PagesError::NotFound);
+    }
+
+    Ok(RegisterTemplate)
 }
 
 #[derive(Template)]
