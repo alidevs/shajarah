@@ -8,7 +8,6 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use tower_cookies::Key;
-use url::Url;
 
 pub mod api;
 pub mod auth;

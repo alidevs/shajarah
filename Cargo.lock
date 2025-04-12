@@ -4282,7 +4282,6 @@ dependencies = [
  "toml",
  "tower-cookies",
  "tower-http",
- "url",
  "uuid",
 ]
 
@@ -5230,7 +5229,6 @@ dependencies = [
  "form_urlencoded",
  "idna",
  "percent-encoding",
- "serde",
 ]
 
 [[package]]

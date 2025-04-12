@@ -28,7 +28,6 @@ use sqlx::PgPool;
 use std::net::{Ipv4Addr, SocketAddrV4};
 use tower_cookies::{CookieManagerLayer, Key};
 use tower_http::{cors::CorsLayer, limit::RequestBodyLimitLayer, services::ServeDir};
-use url::Url;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
