@@ -115,14 +115,7 @@ RETURNING sessions.id
     let cookie = Cookie::build((SESSION_COOKIE_NAME, session.id.to_string()))
         .path("/")
         .expires(time_now + time::Duration::days(2))
-        .http_only(true)
-        .domain(
-            state
-                .domain
-                .host_str()
-                .expect("domain must have a host")
-                .to_string(),
-        );
+        .http_only(true);
 
     #[cfg(not(debug_assertions))]
     let cookie = cookie.secure(true);
@@ -157,14 +150,7 @@ DELETE FROM sessions WHERE sessions.id = $1
 
     let cookie = Cookie::build((SESSION_COOKIE_NAME, ""))
         .path("/")
-        .http_only(true)
-        .domain(
-            state
-                .domain
-                .host_str()
-                .expect("domain must have a host")
-                .to_string(),
-        );
+        .http_only(true);
 
     #[cfg(not(debug_assertions))]
     let cookie = cookie.secure(true);

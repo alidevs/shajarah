@@ -72,7 +72,6 @@ async fn main() {
 
                 let config = Config {
                     cookie_secret: secret,
-                    domain: Url::parse("http://example.com").unwrap(),
                 };
 
                 let config_str =
@@ -93,19 +92,8 @@ async fn main() {
         inner: Arc::new(InnerAppState {
             db_pool: pool,
             cookies_secret: Key::from(config.cookie_secret.as_bytes()),
-            domain: config.domain,
         }),
     };
-
-    log::info!(
-        "cookie domain: {:?}",
-        app_state
-            .inner
-            .domain
-            .host_str()
-            .expect("domain")
-            .to_string()
-    );
 
     let mut app = Router::new()
         .route("/admin", get(admin_page))

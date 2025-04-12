@@ -40,7 +40,6 @@ pub enum ConfigError {
 #[derive(Serialize, Deserialize)]
 pub struct Config {
     pub cookie_secret: String,
-    pub domain: url::Url,
 }
 
 impl Config {
@@ -127,7 +126,6 @@ pub struct Pagination {
 pub struct InnerAppState {
     pub db_pool: PgPool,
     pub cookies_secret: Key,
-    pub domain: Url,
 }
 
 #[derive(Clone, FromRef)]
