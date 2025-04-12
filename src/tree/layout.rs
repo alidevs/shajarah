@@ -2,10 +2,9 @@ use std::collections::HashMap;
 
 use crate::Gender;
 
-use super::Node;
+use super::{Node, NODE_RADIUS};
 
-const NODE_RADIUS: u8 = 30;
-const NODE_PADDING: f32 = 30.;
+const NODE_PADDING: f32 = NODE_RADIUS as f32 * 1.2;
 
 /// this holds all the nodes, and acts as an arena allocator.
 /// this is done to be able to mutate nodes while iterating them

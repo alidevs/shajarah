@@ -1,6 +1,7 @@
 use ar_reshaper::letters::letters_db::LETTERS_ARABIC;
 use ar_reshaper::{config::LigaturesFlags, ArabicReshaper, ReshaperConfig};
 use egui::epaint::PathStroke;
+use egui::Stroke;
 use egui::{
     epaint::CubicBezierShape, text::LayoutJob, Align, Color32, CornerRadius, FontFamily, FontId,
     PointerButton, Pos2, Rect, Sense, Shape, TextFormat, Vec2, Vec2b, Widget,
@@ -22,6 +23,8 @@ const RESHAPER: ArabicReshaper = ArabicReshaper::new(ReshaperConfig::new(
     ar_reshaper::Language::Arabic,
     LigaturesFlags::default(),
 ));
+
+const EXPAND_INDICATOR_SIZE: f32 = 20.;
 
 impl TreeUi {
     pub fn draw(&mut self, ui: &mut egui::Ui) {
@@ -111,7 +114,7 @@ impl Node {
             offset.y + layout_node.y * scale,
         );
 
-        let text_style = FontId::new(20.0 * scale, FontFamily::Monospace);
+        let text_style = FontId::new(24.0 * scale, FontFamily::Monospace);
 
         let painter = ui.painter();
 
@@ -163,7 +166,7 @@ impl Node {
                             child_coords,
                             text_coords + Vec2::new(text_size.x / 2., text_size.y),
                         ],
-                        stroke,
+                        Stroke::new(stroke.width * 2., stroke.color),
                     );
                 } else {
                     let control_point1 =
@@ -189,7 +192,7 @@ impl Node {
                         ],
                         false,
                         Color32::TRANSPARENT,
-                        stroke,
+                        Stroke::new(stroke.width * 2., stroke.color),
                     )));
                 }
             }
@@ -327,35 +330,45 @@ impl Node {
 
         if !self.children.is_empty() {
             if self.collapsed {
-                painter.add(Shape::convex_polygon(
+                let mut shape = Shape::convex_polygon(
                     vec![
                         coords + Vec2::new(-(NODE_RADIUS as f32), NODE_RADIUS as f32) * scale,
                         coords
                             + Vec2::new(-(NODE_RADIUS as f32), NODE_RADIUS as f32) * scale
-                            + Vec2::new(-5., -5.) * scale,
+                            + Vec2::new(-EXPAND_INDICATOR_SIZE / 2., -EXPAND_INDICATOR_SIZE / 2.)
+                                * scale,
                         coords
                             + Vec2::new(-(NODE_RADIUS as f32), NODE_RADIUS as f32) * scale
-                            + Vec2::new(5., -5.) * scale,
+                            + Vec2::new(EXPAND_INDICATOR_SIZE / 2., -EXPAND_INDICATOR_SIZE / 2.)
+                                * scale,
                     ],
                     stroke.color,
                     PathStroke::NONE,
-                ));
+                );
+
+                shape.translate(Vec2::new(-1., 5.));
+
+                painter.add(shape);
             } else {
-                painter.add(Shape::convex_polygon(
+                let mut shape = Shape::convex_polygon(
                     vec![
                         coords
                             + Vec2::new(-(NODE_RADIUS as f32), NODE_RADIUS as f32) * scale
-                            + Vec2::new(0., -5.) * scale,
+                            + Vec2::new(0., -EXPAND_INDICATOR_SIZE / 1.8) * scale,
                         coords
                             + Vec2::new(-(NODE_RADIUS as f32), NODE_RADIUS as f32) * scale
-                            + Vec2::new(-5., 0.) * scale,
+                            + Vec2::new(-EXPAND_INDICATOR_SIZE / 1.8, 0.) * scale,
                         coords
                             + Vec2::new(-(NODE_RADIUS as f32), NODE_RADIUS as f32) * scale
-                            + Vec2::new(5., 0.) * scale,
+                            + Vec2::new(EXPAND_INDICATOR_SIZE / 1.8, 0.) * scale,
                     ],
                     stroke.color,
                     PathStroke::NONE,
-                ));
+                );
+
+                shape.translate(Vec2::new(-1., 5.));
+
+                painter.add(shape);
             }
         }
 

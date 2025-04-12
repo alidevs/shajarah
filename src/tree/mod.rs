@@ -12,7 +12,7 @@ pub mod draw;
 pub mod layout;
 
 const DEFAULT_IMAGE: egui::ImageSource<'static> = include_image!("../../assets/avatar.png");
-const NODE_RADIUS: u8 = 30;
+const NODE_RADIUS: u8 = 40;
 
 pub struct TreeUi {
     pub offset: Vec2,
