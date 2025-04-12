@@ -6,7 +6,7 @@ END $$;
 
 CREATE TABLE IF NOT EXISTS members
 (
-    id SERIAL PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     name TEXT NOT NULL,
     gender gender NOT NULL,
     birthday TIMESTAMPTZ,

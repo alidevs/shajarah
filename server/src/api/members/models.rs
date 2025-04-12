@@ -12,8 +12,8 @@ pub struct CreateMember {
     pub last_name: String,
     pub gender: Gender,
     pub birthday: chrono::DateTime<chrono::Utc>,
-    pub mother_id: Option<i32>,
-    pub father_id: Option<i32>,
+    pub mother_id: Option<i64>,
+    pub father_id: Option<i64>,
     pub image: Option<Vec<u8>>,
     pub image_type: Option<String>,
     /// Generic info about family member
@@ -27,8 +27,8 @@ pub struct CreateMemberBuilder {
     last_name: Option<String>,
     gender: Option<Gender>,
     birthday: Option<chrono::DateTime<chrono::Utc>>,
-    mother_id: Option<i32>,
-    father_id: Option<i32>,
+    mother_id: Option<i64>,
+    father_id: Option<i64>,
     image: Option<Vec<u8>>,
     image_type: Option<String>,
     info: Option<IndexMap<String, serde_json::Value>>,
@@ -61,12 +61,12 @@ impl CreateMemberBuilder {
         self
     }
 
-    pub fn mother_id(&mut self, mother_id: i32) -> &mut Self {
+    pub fn mother_id(&mut self, mother_id: i64) -> &mut Self {
         self.mother_id = Some(mother_id);
         self
     }
 
-    pub fn father_id(&mut self, father_id: i32) -> &mut Self {
+    pub fn father_id(&mut self, father_id: i64) -> &mut Self {
         self.father_id = Some(father_id);
         self
     }
@@ -118,13 +118,13 @@ impl CreateMemberBuilder {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct UpdateMember {
-    pub id: i32,
+    pub id: i64,
     pub name: Option<String>,
     pub last_name: Option<String>,
     pub gender: Option<Gender>,
     pub birthday: Option<chrono::DateTime<chrono::Utc>>,
-    pub mother_id: Option<i32>,
-    pub father_id: Option<i32>,
+    pub mother_id: Option<i64>,
+    pub father_id: Option<i64>,
     pub info: Option<IndexMap<String, serde_json::Value>>,
     pub image: Option<Vec<u8>>,
     pub image_type: Option<String>,
@@ -136,9 +136,9 @@ pub struct UpdateMemberBuilder {
     last_name: Option<String>,
     gender: Option<Gender>,
     birthday: Option<chrono::DateTime<chrono::Utc>>,
-    mother_id: Option<i32>,
+    mother_id: Option<i64>,
     pub remove_mother_id: bool,
-    father_id: Option<i32>,
+    father_id: Option<i64>,
     pub remove_father_id: bool,
     info: Option<IndexMap<String, serde_json::Value>>,
     pub remove_info: bool,
@@ -173,7 +173,7 @@ impl UpdateMemberBuilder {
         self
     }
 
-    pub fn mother_id(&mut self, mother_id: i32) -> &mut Self {
+    pub fn mother_id(&mut self, mother_id: i64) -> &mut Self {
         self.mother_id = Some(mother_id);
         self
     }
@@ -183,7 +183,7 @@ impl UpdateMemberBuilder {
         self
     }
 
-    pub fn father_id(&mut self, father_id: i32) -> &mut Self {
+    pub fn father_id(&mut self, father_id: i64) -> &mut Self {
         self.father_id = Some(father_id);
         self
     }
@@ -213,7 +213,7 @@ impl UpdateMemberBuilder {
         self
     }
 
-    pub fn build(self, id: i32) -> anyhow::Result<UpdateMember> {
+    pub fn build(self, id: i64) -> anyhow::Result<UpdateMember> {
         if self.image.is_some() != self.image_type.is_some() {
             return Err(anyhow!("image or image_type was not added"));
         }
@@ -236,7 +236,7 @@ impl UpdateMemberBuilder {
 #[allow(dead_code)]
 #[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
 pub struct MemberRow {
-    pub id: i32,
+    pub id: i64,
     pub name: String,
     pub last_name: String,
     pub gender: Gender,
@@ -247,22 +247,22 @@ pub struct MemberRow {
     pub image_type: Option<String>,
     #[serde(skip)]
     pub personal_info: Option<serde_json::Value>,
-    pub mother_id: Option<i32>,
-    pub father_id: Option<i32>,
+    pub mother_id: Option<i64>,
+    pub father_id: Option<i64>,
 }
 
 #[allow(dead_code)]
 #[derive(Debug, sqlx::FromRow)]
 pub struct MemberRowWithParents {
-    pub id: i32,
+    pub id: i64,
     pub name: String,
     pub gender: Gender,
     pub birthday: Option<chrono::DateTime<chrono::Utc>>,
     pub last_name: String,
     pub image: Option<Vec<u8>>,
     pub image_type: Option<String>,
-    pub mother_id: Option<i32>,
-    pub father_id: Option<i32>,
+    pub mother_id: Option<i64>,
+    pub father_id: Option<i64>,
     pub personal_info: Option<serde_json::Value>,
     pub mother_name: Option<String>,
     pub mother_gender: Option<Gender>,
@@ -276,13 +276,13 @@ pub struct MemberRowWithParents {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct MemberResponse {
-    pub id: i32,
+    pub id: i64,
     pub name: String,
     pub gender: Gender,
     pub birthday: Option<DateTime<Utc>>,
     pub last_name: String,
-    pub father_id: Option<i32>,
-    pub mother_id: Option<i32>,
+    pub father_id: Option<i64>,
+    pub mother_id: Option<i64>,
     pub personal_info: Option<IndexMap<String, String>>,
     pub children: Vec<MemberResponse>,
     pub image: Option<Vec<u8>>,
@@ -327,13 +327,13 @@ impl MemberResponse {
 /// non-recursive MemberResponse
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct MemberResponseBrief {
-    pub id: i32,
+    pub id: i64,
     pub name: String,
     pub gender: Gender,
     pub birthday: Option<DateTime<Utc>>,
     pub last_name: String,
-    pub father_id: Option<i32>,
-    pub mother_id: Option<i32>,
+    pub father_id: Option<i64>,
+    pub mother_id: Option<i64>,
     pub personal_info: Option<IndexMap<String, String>>,
     pub image: Option<Vec<u8>>,
     pub image_type: Option<String>,
@@ -349,8 +349,8 @@ pub struct RequestedMemberRow {
     pub last_name: String,
     pub image: Option<Vec<u8>>,
     pub image_type: Option<String>,
-    pub mother_id: Option<i32>,
-    pub father_id: Option<i32>,
+    pub mother_id: Option<i64>,
+    pub father_id: Option<i64>,
     pub personal_info: Option<serde_json::Value>,
     pub status: RequestStatus,
 }
@@ -365,8 +365,8 @@ pub struct RequestedMemberRowWithParents {
     pub last_name: String,
     pub image: Option<Vec<u8>>,
     pub image_type: Option<String>,
-    pub mother_id: Option<i32>,
-    pub father_id: Option<i32>,
+    pub mother_id: Option<i64>,
+    pub father_id: Option<i64>,
     pub personal_info: Option<serde_json::Value>,
     pub mother_name: Option<String>,
     pub mother_gender: Option<Gender>,
@@ -386,8 +386,8 @@ pub struct RequestedMemberResponseBrief {
     pub gender: Gender,
     pub birthday: Option<DateTime<Utc>>,
     pub last_name: String,
-    pub father_id: Option<i32>,
-    pub mother_id: Option<i32>,
+    pub father_id: Option<i64>,
+    pub mother_id: Option<i64>,
     pub personal_info: Option<IndexMap<String, String>>,
     pub image: Option<Vec<u8>>,
     pub image_type: Option<String>,

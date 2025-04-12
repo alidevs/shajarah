@@ -407,7 +407,7 @@ pub async fn add_member(
 pub async fn edit_member(
     _auth: AuthExtractor<{ UserRole::Admin as u8 }>,
     State(state): State<Arc<InnerAppState>>,
-    Path(id): Path<i32>,
+    Path(id): Path<i64>,
     mut multipart: Multipart,
 ) -> anyhow::Result<(), MembersError> {
     let mut limit = FIELDS_LIMIT;
@@ -715,7 +715,7 @@ WHERE id = $1"#,
 pub async fn delete_member(
     _auth: AuthExtractor<{ UserRole::Admin as u8 }>,
     State(state): State<Arc<InnerAppState>>,
-    Path(id): Path<i32>,
+    Path(id): Path<i64>,
 ) -> anyhow::Result<(), MembersError> {
     sqlx::query(
         r#"

@@ -25,7 +25,7 @@ use crate::{
 mod filters {
     use base64::Engine;
 
-    pub fn deref_i32(s: &i32) -> ::askama::Result<i32> {
+    pub fn deref_i64(s: &i64) -> ::askama::Result<i64> {
         Ok(*s)
     }
 

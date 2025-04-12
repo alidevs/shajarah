@@ -331,7 +331,7 @@
                     {% if other_member.gender == "female" %}
                     {% match member.mother_id %}
                     {% when Some with (mother_id) %}
-                    {% if other_member.id == mother_id|deref_i32 %}
+                    {% if other_member.id == mother_id|deref_i64 %}
                     <option selected value={{other_member.id}}>{{ other_member.id }} {{ other_member.name }}</option>
                     {% else if other_member.id != member.id %}
                     <option value={{other_member.id}}>{{ other_member.id }} {{ other_member.name }}</option>
@@ -360,7 +360,7 @@
                     {% if other_member.gender == "male" %}
                     {% match member.father_id %}
                     {% when Some with (father_id) %}
-                    {% if other_member.id == father_id|deref_i32 %}
+                    {% if other_member.id == father_id|deref_i64 %}
                     <option selected value={{other_member.id}}>{{ other_member.id }} {{ other_member.name }}</option>
                     {% else if other_member.id != member.id %}
                     <option value={{other_member.id}}>{{ other_member.id }} {{ other_member.name }}</option>
