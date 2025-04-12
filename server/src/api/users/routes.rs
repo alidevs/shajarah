@@ -155,8 +155,6 @@ DELETE FROM sessions WHERE sessions.id = $1
     //     .execute(&mut db)
     //     .await?;
 
-    log::debug!("{}", state.domain.to_string());
-
     let cookie = Cookie::build((SESSION_COOKIE_NAME, ""))
         .path("/")
         .http_only(true)

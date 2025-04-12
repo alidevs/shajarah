@@ -97,6 +97,16 @@ async fn main() {
         }),
     };
 
+    log::info!(
+        "cookie domain: {:?}",
+        app_state
+            .inner
+            .domain
+            .host_str()
+            .expect("domain")
+            .to_string()
+    );
+
     let mut app = Router::new()
         .route("/admin", get(admin_page))
         .route("/login", get(login_page))
