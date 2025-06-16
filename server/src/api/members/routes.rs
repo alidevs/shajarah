@@ -145,9 +145,47 @@ pub async fn get_members_flat(
         LEFT JOIN
             members father ON m.father_id = father.id
         WHERE
-        to_tsvector(m.name) @@ websearch_to_tsquery($1)
+        (
+            to_tsvector('simple', 
+                coalesce(m.name, '') || ' ' || 
+                coalesce(m.last_name, '') || ' ' || 
+                coalesce(cast(m.id as text), '') || ' ' ||
+                coalesce(m.personal_info::text, '') || ' ' ||
+                coalesce(mother.name, '') || ' ' ||
+                coalesce(mother.last_name, '') || ' ' ||
+                coalesce(father.name, '') || ' ' ||
+                coalesce(father.last_name, '')
+            ) @@ plainto_tsquery('simple', $1)
+            OR
+            (
+                m.name ILIKE '%' || $1 || '%' OR
+                m.last_name ILIKE '%' || $1 || '%' OR
+                cast(m.id as text) LIKE '%' || $1 || '%' OR
+                m.personal_info::text ILIKE '%' || $1 || '%' OR
+                coalesce(mother.name, '') ILIKE '%' || $1 || '%' OR
+                coalesce(mother.last_name, '') ILIKE '%' || $1 || '%' OR
+                coalesce(father.name, '') ILIKE '%' || $1 || '%' OR
+                coalesce(father.last_name, '') ILIKE '%' || $1 || '%'
+            )
+        )
         ORDER BY
-            m.id, m.name ASC
+        (
+            CASE 
+                WHEN to_tsvector('simple', 
+                    coalesce(m.name, '') || ' ' || 
+                    coalesce(m.last_name, '') || ' ' || 
+                    coalesce(cast(m.id as text), '') || ' ' ||
+                    coalesce(m.personal_info::text, '') || ' ' ||
+                    coalesce(mother.name, '') || ' ' ||
+                    coalesce(mother.last_name, '') || ' ' ||
+                    coalesce(father.name, '') || ' ' ||
+                    coalesce(father.last_name, '')
+                ) @@ plainto_tsquery('simple', $1) THEN 1
+                WHEN m.name ILIKE $1 || '%' OR m.last_name ILIKE $1 || '%' THEN 2
+                ELSE 3
+            END
+        ),
+        m.name ASC
         OFFSET $2
         LIMIT $3;
             "#,
@@ -158,6 +196,7 @@ pub async fn get_members_flat(
         .fetch_all(&state.db_pool)
         .await?
     } else {
+        // Your existing non-search query
         sqlx::query_as(
             r#"
         SELECT
@@ -197,30 +236,26 @@ pub async fn get_members_flat(
         .await?
     };
 
-    if recs.is_empty() {
-        return Err(MembersError::NoMembers);
-    }
-
-    let members = recs
+    // Convert to response format
+    let members: Vec<MemberResponseBrief> = recs
         .into_iter()
-        .map(|r| MemberResponseBrief {
-            id: r.id,
-            name: r.name,
-            gender: r.gender,
-            birthday: r.birthday,
-            last_name: r.last_name,
-            father_id: r.father_id,
-            mother_id: r.mother_id,
-            personal_info: r.personal_info.and_then(|p| {
+        .map(|m| MemberResponseBrief {
+            id: m.id,
+            name: m.name,
+            gender: m.gender,
+            birthday: m.birthday,
+            last_name: m.last_name,
+            father_id: m.father_id,
+            mother_id: m.mother_id,
+            personal_info: m.personal_info.as_ref().and_then(|p| {
                 p.as_object().map(|o| {
                     o.into_iter()
                         .map(|(k, v)| (k.to_string(), v.as_str().unwrap_or("").to_string()))
-                        .rev()
                         .collect::<IndexMap<String, String>>()
                 })
             }),
-            image: r.image,
-            image_type: r.image_type,
+            image: m.image,
+            image_type: m.image_type,
         })
         .collect();
 
@@ -1066,9 +1101,49 @@ pub async fn get_requested_members_flat(
         LEFT JOIN
             members father ON m.father_id = father.id
         WHERE
-        to_tsvector(m.name) @@ websearch_to_tsquery($1)
+            (
+                to_tsvector('simple', 
+                    coalesce(m.name, '') || ' ' || 
+                    coalesce(m.last_name, '') || ' ' || 
+                    coalesce(cast(m.id as text), '') || ' ' ||
+                    coalesce(m.personal_info::text, '') || ' ' ||
+                    coalesce(mother.name, '') || ' ' ||
+                    coalesce(mother.last_name, '') || ' ' ||
+                    coalesce(father.name, '') || ' ' ||
+                    coalesce(father.last_name, '')
+                ) @@ plainto_tsquery('simple', $1)
+                OR
+                (
+                    m.name ILIKE '%' || $1 || '%' OR
+                    m.last_name ILIKE '%' || $1 || '%' OR
+                    cast(m.id as text) LIKE '%' || $1 || '%' OR
+                    m.personal_info::text ILIKE '%' || $1 || '%' OR
+                    coalesce(mother.name, '') ILIKE '%' || $1 || '%' OR
+                    coalesce(mother.last_name, '') ILIKE '%' || $1 || '%' OR
+                    coalesce(father.name, '') ILIKE '%' || $1 || '%' OR
+                    coalesce(father.last_name, '') ILIKE '%' || $1 || '%'
+                )
+            )
         ORDER BY
-            m.submitted_at, m.name ASC
+            -- Prioritize exact word matches, then partial matches
+            (
+                CASE 
+                    WHEN to_tsvector('simple', 
+                        coalesce(m.name, '') || ' ' || 
+                        coalesce(m.last_name, '') || ' ' || 
+                        coalesce(cast(m.id as text), '') || ' ' ||
+                        coalesce(m.personal_info::text, '') || ' ' ||
+                        coalesce(mother.name, '') || ' ' ||
+                        coalesce(mother.last_name, '') || ' ' ||
+                        coalesce(father.name, '') || ' ' ||
+                        coalesce(father.last_name, '')
+                    ) @@ plainto_tsquery('simple', $1) THEN 1
+                    WHEN m.name ILIKE $1 || '%' OR m.last_name ILIKE $1 || '%' THEN 2  -- Starts with
+                    ELSE 3  -- Contains
+                END
+            ),
+            m.submitted_at DESC,
+            m.name ASC
         OFFSET $2
         LIMIT $3;
             "#,
@@ -1108,7 +1183,8 @@ pub async fn get_requested_members_flat(
         LEFT JOIN
             members father ON m.father_id = father.id
         ORDER BY
-            m.submitted_at, m.name ASC
+            m.submitted_at DESC,
+            m.name ASC
         OFFSET $1
         LIMIT $2;
             "#,
@@ -1119,17 +1195,21 @@ pub async fn get_requested_members_flat(
         .await?
     };
 
-    let members = recs
+    if recs.is_empty() {
+        return Err(MembersError::NoMembers);
+    }
+
+    let members: Vec<RequestedMemberResponseBrief> = recs
         .into_iter()
-        .map(|r| RequestedMemberResponseBrief {
-            id: r.id,
-            name: r.name,
-            gender: r.gender,
-            birthday: r.birthday,
-            last_name: r.last_name,
-            father_id: r.father_id,
-            mother_id: r.mother_id,
-            personal_info: r.personal_info.and_then(|p| {
+        .map(|m| RequestedMemberResponseBrief {
+            id: m.id,
+            name: m.name,
+            gender: m.gender,
+            birthday: m.birthday,
+            last_name: m.last_name,
+            father_id: m.father_id,
+            mother_id: m.mother_id,
+            personal_info: m.personal_info.as_ref().and_then(|p| {
                 p.as_object().map(|o| {
                     o.into_iter()
                         .map(|(k, v)| (k.to_string(), v.as_str().unwrap_or("").to_string()))
@@ -1137,9 +1217,9 @@ pub async fn get_requested_members_flat(
                         .collect::<IndexMap<String, String>>()
                 })
             }),
-            image: r.image,
-            image_type: r.image_type,
-            status: r.status,
+            image: m.image,
+            image_type: m.image_type,
+            status: m.status,
         })
         .collect();
 
