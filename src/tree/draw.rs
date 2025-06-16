@@ -1,4 +1,3 @@
-use ar_reshaper::letters::letters_db::LETTERS_ARABIC;
 use ar_reshaper::{config::LigaturesFlags, ArabicReshaper, ReshaperConfig};
 use egui::epaint::PathStroke;
 use egui::Stroke;
@@ -6,6 +5,7 @@ use egui::{
     epaint::CubicBezierShape, text::LayoutJob, Align, Color32, CornerRadius, FontFamily, FontId,
     PointerButton, Pos2, Rect, Sense, Shape, TextFormat, Vec2, Vec2b, Widget,
 };
+use unicode_bidi::BidiInfo;
 
 use crate::zoom::Zoom;
 
@@ -120,11 +120,7 @@ impl Node {
 
         let mut job = LayoutJob::default();
         job.append(
-            &RESHAPER
-                .reshape(self.name.clone())
-                .chars()
-                .rev()
-                .collect::<String>(),
+            &shape_text(&self.name),
             0.0,
             TextFormat {
                 font_id: text_style.clone(),
@@ -245,28 +241,19 @@ impl Node {
                         .map(|l| format!("{} ", l.name.clone()))
                         .take(2)
                         .collect::<String>();
-                    ui.heading(
-                        RESHAPER
-                            .reshape(format!("{} {}{}", self.name, lineage, self.last_name))
-                            .chars()
-                            .rev()
-                            .collect::<String>(),
-                    );
+                    ui.heading(shape_text(&format!(
+                        "{} {}{}",
+                        self.name, lineage, self.last_name
+                    )));
 
                     if let Some(personal_info) = self.personal_info.as_ref() {
                         if !personal_info.is_empty() {
                             ui.add_space(10.);
-                            ui.label(
-                                RESHAPER
-                                    .reshape("المعلومات الشخصية:")
-                                    .chars()
-                                    .rev()
-                                    .collect::<String>(),
-                            );
+                            ui.label(shape_text("المعلومات الشخصية:"));
 
                             for (key, value) in personal_info {
-                                let key = fix_arabic(&format!("{key}: "));
-                                let value = fix_arabic(&value);
+                                let key = shape_text(&format!("{key}: "));
+                                let value = shape_text(&value);
                                 ui.horizontal(|ui| {
                                     ui.label(key);
                                     ui.label(value);
@@ -416,79 +403,31 @@ impl Node {
     }
 }
 
-/// workaround to fix arabic words until egui has better RTL rendering
-fn fix_arabic(input: &str) -> String {
-    let input = RESHAPER.reshape(input);
-    let mut output = String::with_capacity(input.len());
-    let mut ar_buffer = String::new();
-    let mut in_arabic_block = false;
+fn shape_text(input: &str) -> String {
+    let mut output = String::new();
+    if input.is_empty() {
+        return output;
+    }
 
-    let mut chars = input.chars().peekable();
+    let bidi_info = BidiInfo::new(input, None);
+    for paragraph in bidi_info.paragraphs.iter() {
+        let (levels, runs) = bidi_info.visual_runs(&paragraph, paragraph.range.clone());
 
-    while let Some(c) = chars.next() {
-        let is_arabic_char = LETTERS_ARABIC.iter().any(|l| {
-            l.0 == c || l.1.isolated == c || l.1.initial == c || l.1.medial == c || l.1.end == c
-        });
-
-        if is_arabic_char {
-            ar_buffer.push(c);
-            in_arabic_block = true;
-        } else if in_arabic_block && (c.is_whitespace() || is_symbol(c)) {
-            ar_buffer.push(c);
-        } else {
-            if in_arabic_block {
-                output.extend(ar_buffer.chars().rev());
-                ar_buffer.clear();
-                in_arabic_block = false;
+        for run in runs {
+            let run_level = levels[run.start];
+            if run_level.is_rtl() {
+                output.push_str(
+                    &RESHAPER
+                        .reshape(&input[paragraph.range.clone()][run])
+                        .chars()
+                        .rev()
+                        .collect::<String>(),
+                );
+            } else {
+                output.push_str(&input[paragraph.range.clone()][run]);
             }
-            output.push(c);
         }
     }
 
-    if in_arabic_block {
-        output.extend(ar_buffer.chars().rev());
-    }
-
     output
-}
-
-/// a non-exhaustive check of symbols
-fn is_symbol(c: char) -> bool {
-    matches!(
-        c,
-        ':' | '?'
-            | '؟'
-            | '،'
-            | '.'
-            | ','
-            | ';'
-            | '!'
-            | 'ـ'
-            | '"'
-            | '\''
-            | '('
-            | ')'
-            | '['
-            | ']'
-            | '{'
-            | '}'
-    )
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_rev_arabic_only_arabic() {
-        let input = String::from("السلام عليكم جميعا");
-
-        let shaped = RESHAPER.reshape(&input);
-
-        let output = fix_arabic(&shaped);
-
-        let expected = String::from("ﺎﻌﻴﻤﺟ ﻢﻜﻴﻠﻋ ﻡﺎﻠﺴﻟﺍ");
-
-        assert_eq!(output, expected);
-    }
 }

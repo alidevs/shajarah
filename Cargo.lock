@@ -4325,6 +4325,7 @@ dependencies = [
  "log",
  "serde",
  "serde_json",
+ "unicode-bidi",
  "wasm-bindgen-futures",
  "web-sys",
 ]
