@@ -64,6 +64,7 @@ impl eframe::App for App {
 
                 if reload.clicked() {
                     load_family_data(&self.backend_address, self.message_sender.clone(), ctx);
+                    self.tree.request_recenter();
                 }
 
                 let is_debug = cfg!(debug_assertions);

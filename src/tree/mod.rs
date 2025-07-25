@@ -56,6 +56,10 @@ impl TreeUi {
         self.offset += delta;
     }
 
+    pub fn request_recenter(&mut self) {
+        self.centered = false;
+    }
+
     // fn screen_pos_to_graph(&self, pos: Pos2, viewport: Rect) -> Pos2 {
     //     (pos + self.offset - viewport.center().to_vec2()) / self.scale
     // }

@@ -116,6 +116,38 @@ impl Node {
             offset.y + layout_node.y * scale,
         );
 
+        let image_rect = Rect::from_center_size(
+            coords,
+            (Vec2::splat(NODE_RADIUS as f32 * 2.) * scale) + Vec2::splat(1.0), // add one pixel to cover the whole background circle
+        );
+
+        let response = ui.allocate_rect(image_rect, Sense::click());
+
+        if response.clicked() {
+            self.collapsed = !self.collapsed;
+            layout_tree
+                .get_mut(self.id)
+                .expect("node should exist in layout tree")
+                .collapsed = self.collapsed;
+
+            let prev_x = layout_tree
+                .get(self.id)
+                .expect("node should exist in layout tree")
+                .x;
+
+            layout_tree.layout();
+
+            let new_node = layout_tree
+                .get(self.id)
+                .expect("node should exist in layout tree");
+
+            offset.x -= (new_node.x - prev_x) * scale;
+        }
+
+        if response.secondary_clicked() {
+            self.window_is_open = !self.window_is_open;
+        }
+
         let text_style = FontId::new(24.0 * scale, FontFamily::Monospace);
 
         let painter = ui.painter();
@@ -143,10 +175,10 @@ impl Node {
 
         painter.galley(text_coords, galley, Color32::WHITE);
 
-        // #[cfg(feature = "debug-ui")]
-        // {
-        //     log::debug!("coords: {coords:?}");
-        // }
+        #[cfg(feature = "debug-ui")]
+        {
+            log::debug!("coords: {coords:?}");
+        }
 
         if !self.collapsed {
             for child in self.children.iter() {
@@ -281,39 +313,6 @@ impl Node {
             }
         }
 
-        let image_rect = Rect::from_center_size(
-            coords,
-            (Vec2::splat(NODE_RADIUS as f32 * 2.) * scale) + Vec2::splat(1.0), // add one pixel to cover the whole background circle
-        );
-
-        let response = ui.allocate_rect(image_rect, Sense::click());
-
-        if response.double_clicked() {
-            self.collapsed = !self.collapsed;
-            layout_tree
-                .get_mut(self.id)
-                .expect("node should exist in layout tree")
-                .collapsed = self.collapsed;
-
-            let prev_x = layout_tree
-                .get(self.id)
-                .expect("node should exist in layout tree")
-                .x;
-
-            layout_tree.layout();
-
-            let new_x = layout_tree
-                .get(self.id)
-                .expect("node should exist in layout tree")
-                .x;
-
-            offset.x -= (new_x - prev_x) * scale;
-        }
-
-        if response.clicked() {
-            self.window_is_open = !self.window_is_open;
-        }
-
         let painter = ui.painter();
         painter.circle_filled(coords, NODE_RADIUS as f32 * scale, Color32::LIGHT_BLUE);
 
@@ -417,16 +416,12 @@ fn shape_text(input: &str) -> String {
 
         for run in runs {
             let run_level = levels[run.start];
+            let text = &input[paragraph.range.clone()][run];
+
             if run_level.is_rtl() {
-                output.push_str(
-                    &RESHAPER
-                        .reshape(&input[paragraph.range.clone()][run])
-                        .chars()
-                        .rev()
-                        .collect::<String>(),
-                );
+                output.push_str(&RESHAPER.reshape(text).chars().rev().collect::<String>());
             } else {
-                output.push_str(&input[paragraph.range.clone()][run]);
+                output.push_str(text);
             }
         }
     }

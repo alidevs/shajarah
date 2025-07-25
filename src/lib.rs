@@ -23,14 +23,14 @@ enum Message {
     LoadedFamilyData(Node),
 }
 
+const FONT: &[u8] = include_bytes!("../fonts/arial.ttf");
+
 fn setup_fonts(ctx: &egui::Context) {
     let mut fonts = egui::FontDefinitions::default();
 
     fonts.font_data.insert(
         "arial".to_owned(),
-        Arc::new(egui::FontData::from_static(include_bytes!(
-            "../fonts/arial.ttf"
-        ))),
+        Arc::new(egui::FontData::from_static(FONT)),
     );
 
     fonts
