@@ -1,5 +1,7 @@
 use chrono::{DateTime, Utc};
 
+use eframe::egui;
+
 use egui::{include_image, Vec2};
 
 use indexmap::IndexMap;

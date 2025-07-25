@@ -5,6 +5,8 @@ mod tree;
 mod zoom;
 use std::sync::{mpsc::Sender, Arc};
 
+use eframe::egui;
+
 pub use app::App;
 use serde::{Deserialize, Serialize};
 use tree::Node;
@@ -48,7 +50,7 @@ fn setup_fonts(ctx: &egui::Context) {
 
 fn load_family_data(address: &str, sender: Sender<Message>, ctx: &egui::Context) {
     let ctx = ctx.clone();
-    let request = ehttp::Request::get(&format!("{address}/api/members"));
+    let request = ehttp::Request::get(format!("{address}/api/members"));
     ehttp::fetch(request, move |res| match res {
         Ok(res) => {
             if !res.ok {

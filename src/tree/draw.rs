@@ -1,4 +1,6 @@
 use ar_reshaper::{config::LigaturesFlags, ArabicReshaper, ReshaperConfig};
+use eframe::egui;
+
 use egui::epaint::PathStroke;
 use egui::Stroke;
 use egui::{
@@ -253,7 +255,7 @@ impl Node {
 
                             for (key, value) in personal_info {
                                 let key = shape_text(&format!("{key}: "));
-                                let value = shape_text(&value);
+                                let value = shape_text(value);
                                 ui.horizontal(|ui| {
                                     ui.label(key);
                                     ui.label(value);
@@ -411,7 +413,7 @@ fn shape_text(input: &str) -> String {
 
     let bidi_info = BidiInfo::new(input, None);
     for paragraph in bidi_info.paragraphs.iter() {
-        let (levels, runs) = bidi_info.visual_runs(&paragraph, paragraph.range.clone());
+        let (levels, runs) = bidi_info.visual_runs(paragraph, paragraph.range.clone());
 
         for run in runs {
             let run_level = levels[run.start];

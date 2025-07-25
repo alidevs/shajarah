@@ -124,16 +124,9 @@ async fn main() {
     let app = app
         .layer(
             CorsLayer::new()
-                .allow_origin([
-                    "http://localhost:3030".parse::<HeaderValue>().unwrap(),
-                    "http://localhost:3001".parse::<HeaderValue>().unwrap(),
-                    "http://localhost:9393".parse::<HeaderValue>().unwrap(),
-                    "http://192.168.0.132:3001".parse::<HeaderValue>().unwrap(),
-                    "http://192.168.0.132:8080".parse::<HeaderValue>().unwrap(),
-                    "https://shajarah.bksalman.com"
-                        .parse::<HeaderValue>()
-                        .unwrap(),
-                ])
+                .allow_origin(["https://shajarah.bksalman.com"
+                    .parse::<HeaderValue>()
+                    .unwrap()])
                 .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE]),
         )
         .layer(axum::middleware::from_fn_with_state(

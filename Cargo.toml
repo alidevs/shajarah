@@ -25,14 +25,13 @@ chrono = { version = "0.4.38", features = ["serde"] }
 log = "0.4"
 
 [dependencies]
-egui = "0.31"
 log = { workspace = true }
 
 serde = { workspace = true }
 lazy_static = "1.5.0"
 ar-reshaper = "1.5.0"
 unicode-bidi = "0.3.18"
-egui_extras = { version = "0.31", features = ["image", "http"] }
+egui_extras = { version = "0.32", features = ["image", "http"] }
 image = { version = "0.25", features = ["jpeg", "png", "webp"] }
 ehttp = { version = "0.5.0", features = ["json"] }
 serde_json = { workspace = true, features = ["preserve_order"] }
@@ -43,20 +42,20 @@ indexmap = { workspace = true }
 # native:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 env_logger = "0.10"
-eframe = { version = "0.31", default-features = false, features = [
+eframe = { version = "0.32", default-features = false, features = [
     "accesskit",
     "default_fonts",
     "glow",          # Use the glow rendering backend. Alternative: "wgpu".
     # "persistence",   # Enable restoring app state when restarting the app.
     "wayland",
-    # "x11",
+    "x11",
     # "wgpu",
 ] }
 
 # web:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen-futures = "0.4"
-eframe = { version = "0.31", default-features = false, features = [
+eframe = { version = "0.32", default-features = false, features = [
     "accesskit",     # Make egui compatible with screen readers. NOTE: adds a lot of dependencies.
     "default_fonts", # Embed the default egui fonts.
     "glow",          # Use the glow rendering backend. Alternative: "wgpu".

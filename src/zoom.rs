@@ -1,4 +1,5 @@
 //! shamelessly stolen from https://github.com/zakarumych/egui-snarl/blob/main/src/ui/zoom.rs
+use eframe::egui;
 
 use egui::{
     epaint::{PathStroke, Shadow},

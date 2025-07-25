@@ -1,5 +1,7 @@
 use std::sync::mpsc::{self, Receiver, Sender};
 
+use eframe::egui;
+
 use crate::{load_family_data, setup_fonts, tree::TreeUi, Message};
 
 pub struct App {
@@ -44,7 +46,7 @@ impl eframe::App for App {
 
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
-            egui::menu::bar(ui, |ui| {
+            egui::MenuBar::new().ui(ui, |ui| {
                 // NOTE: no File->Quit on web pages!
                 let is_web = cfg!(target_arch = "wasm32");
                 if !is_web {
@@ -54,13 +56,6 @@ impl eframe::App for App {
                         }
                     });
                     ui.add_space(16.0);
-
-                    let label = ui.label("backend address:");
-                    egui::TextEdit::singleline(&mut self.backend_address)
-                        .hint_text("http://localhost:3001")
-                        .show(ui)
-                        .response
-                        .labelled_by(label.id);
                 }
 
                 egui::widgets::global_theme_preference_buttons(ui);
@@ -69,6 +64,17 @@ impl eframe::App for App {
 
                 if reload.clicked() {
                     load_family_data(&self.backend_address, self.message_sender.clone(), ctx);
+                }
+
+                let is_debug = cfg!(debug_assertions);
+
+                if is_debug {
+                    let label = ui.label("backend address:");
+                    egui::TextEdit::singleline(&mut self.backend_address)
+                        .hint_text("http://localhost:3001")
+                        .show(ui)
+                        .response
+                        .labelled_by(label.id);
                 }
             });
         });
