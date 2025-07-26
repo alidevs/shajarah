@@ -28,7 +28,7 @@ const FIELDS_LIMIT: i32 = 10;
 #[axum::debug_handler]
 pub async fn get_members(
     State(state): State<Arc<InnerAppState>>,
-) -> anyhow::Result<Json<MemberResponse>, MembersError> {
+) -> anyhow::Result<Json<Option<MemberResponse>>, MembersError> {
     let recs: Vec<MemberRowWithParents> = sqlx::query_as(
         r#"
 SELECT
@@ -62,7 +62,7 @@ LEFT JOIN
     .await?;
 
     if recs.is_empty() {
-        return Err(MembersError::NoMembers);
+        return Ok(Json(None));
     }
 
     let Some(root) = recs
@@ -95,7 +95,7 @@ LEFT JOIN
 
     root.add_all_children(&recs);
 
-    Ok(Json(root))
+    Ok(Json(Some(root)))
 }
 
 #[serde_as]
@@ -1196,7 +1196,7 @@ pub async fn get_requested_members_flat(
     };
 
     if recs.is_empty() {
-        return Err(MembersError::NoMembers);
+        return Ok(Json(Vec::new()));
     }
 
     let members: Vec<RequestedMemberResponseBrief> = recs
