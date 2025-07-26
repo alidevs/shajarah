@@ -144,40 +144,40 @@ impl LayoutTree {
         }
     }
 
-    fn siblings_between(&self, left: usize, right: usize) -> Vec<usize> {
-        let left_order = self[left].order;
-        let right_order = self[right].order;
+    // fn siblings_between(&self, left: usize, right: usize) -> Vec<usize> {
+    //     let left_order = self[left].order;
+    //     let right_order = self[right].order;
 
-        if self[left].is_root() || self[right].is_root() {
-            assert!(
-                self[left].is_root(),
-                "If one node is the root then both nodes must be."
-            );
-            assert!(
-                self[right].is_root(),
-                "If one node is the root then both nodes must be."
-            );
+    //     if self[left].is_root() || self[right].is_root() {
+    //         assert!(
+    //             self[left].is_root(),
+    //             "If one node is the root then both nodes must be."
+    //         );
+    //         assert!(
+    //             self[right].is_root(),
+    //             "If one node is the root then both nodes must be."
+    //         );
 
-            return Vec::new();
-        }
+    //         return Vec::new();
+    //     }
 
-        let left_parent = self[left]
-            .father_idx
-            .expect("`is_none` has already been checked.");
+    //     let left_parent = self[left]
+    //         .father_idx
+    //         .expect("`is_none` has already been checked.");
 
-        let right_parent = self[right]
-            .father_idx
-            .expect("`is_none` has already been checked.");
+    //     let right_parent = self[right]
+    //         .father_idx
+    //         .expect("`is_none` has already been checked.");
 
-        assert!(
-            left_parent == right_parent,
-            "Nodes must actually be siblings."
-        );
+    //     assert!(
+    //         left_parent == right_parent,
+    //         "Nodes must actually be siblings."
+    //     );
 
-        let parent = left_parent;
+    //     let parent = left_parent;
 
-        self[parent].children[left_order + 1..right_order].into()
-    }
+    //     self[parent].children[left_order + 1..right_order].into()
+    // }
 
     fn breadth_first(&self, node: usize) -> Vec<usize> {
         let mut breadth_first = vec![node];
@@ -368,13 +368,13 @@ impl std::ops::IndexMut<usize> for LayoutTree {
 
 fn left_contour(tree: &LayoutTree, node: usize) -> HashMap<usize, f32> {
     contour(tree, node, f32::min, |n| {
-        n.x - NODE_RADIUS as f32 * 2. + NODE_PADDING as f32
+        n.x - NODE_RADIUS as f32 * 2. + NODE_PADDING
     })
 }
 
 fn right_contour(tree: &LayoutTree, node: usize) -> HashMap<usize, f32> {
     contour(tree, node, f32::max, |n| {
-        n.x + NODE_RADIUS as f32 * 2. + NODE_PADDING as f32
+        n.x + NODE_RADIUS as f32 * 2. + NODE_PADDING
     })
 }
 
@@ -440,7 +440,7 @@ impl LayoutNode {
         self.children.is_empty() || self.collapsed
     }
 
-    pub fn is_root(&self) -> bool {
-        self.mother_idx.is_none() && self.father_idx.is_none()
-    }
+    // pub fn is_root(&self) -> bool {
+    //     self.mother_idx.is_none() && self.father_idx.is_none()
+    // }
 }
