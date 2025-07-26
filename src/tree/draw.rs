@@ -1,11 +1,11 @@
-use ar_reshaper::{config::LigaturesFlags, ArabicReshaper, ReshaperConfig};
+use ar_reshaper::{ArabicReshaper, ReshaperConfig, config::LigaturesFlags};
 use eframe::egui;
 
-use egui::epaint::PathStroke;
 use egui::Stroke;
+use egui::epaint::PathStroke;
 use egui::{
-    epaint::CubicBezierShape, text::LayoutJob, Align, Color32, CornerRadius, FontFamily, FontId,
-    PointerButton, Pos2, Rect, Sense, Shape, TextFormat, Vec2, Vec2b, Widget,
+    Align, Color32, CornerRadius, FontFamily, FontId, PointerButton, Pos2, Rect, Sense, Shape,
+    TextFormat, Vec2, Vec2b, Widget, epaint::CubicBezierShape, text::LayoutJob,
 };
 use unicode_bidi::BidiInfo;
 
@@ -14,7 +14,7 @@ use crate::zoom::Zoom;
 #[cfg(feature = "debug-ui")]
 use egui::StrokeKind;
 
-use super::{layout::LayoutTree, Node, SimpleNode, TreeUi, DEFAULT_IMAGE, NODE_RADIUS};
+use super::{DEFAULT_IMAGE, NODE_RADIUS, Node, SimpleNode, TreeUi, layout::LayoutTree};
 
 const MAX_SCALE: f32 = 5.0;
 const MIN_SCALE: f32 = 0.2;

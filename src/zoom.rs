@@ -2,9 +2,9 @@
 use eframe::egui;
 
 use egui::{
+    CornerRadius, FontId, Frame, Margin, Stroke, Style, Vec2, Visuals,
     epaint::{PathStroke, Shadow},
     style::{Interaction, ScrollStyle, Spacing, TextCursorStyle, WidgetVisuals, Widgets},
-    CornerRadius, FontId, Frame, Margin, Stroke, Style, Vec2, Visuals,
 };
 
 pub trait Zoom {

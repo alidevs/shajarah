@@ -2,7 +2,7 @@ use std::sync::mpsc::{self, Receiver, Sender};
 
 use eframe::egui;
 
-use crate::{load_family_data, setup_fonts, tree::TreeUi, Message};
+use crate::{Message, load_family_data, setup_fonts, tree::TreeUi};
 
 pub struct App {
     tree: TreeUi,

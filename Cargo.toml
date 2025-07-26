@@ -2,9 +2,9 @@
 name = "shajarah"
 version = "0.1.0"
 authors = ["Salman Abuhaimed <salman.f.abuhaimed@gmail.com>"]
-edition = "2021"
+edition = "2024"
 include = ["LICENSE-APACHE", "LICENSE-MIT", "**/*.rs", "Cargo.toml"]
-rust-version = "1.79"
+rust-version = "1.88"
 
 [workspace]
 members = [

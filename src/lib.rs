@@ -3,7 +3,7 @@
 mod app;
 mod tree;
 mod zoom;
-use std::sync::{mpsc::Sender, Arc};
+use std::sync::{Arc, mpsc::Sender};
 
 use eframe::egui;
 

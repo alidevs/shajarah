@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 
 use eframe::egui;
 
-use egui::{include_image, Vec2};
+use egui::{Vec2, include_image};
 
 use indexmap::IndexMap;
 use layout::LayoutTree;

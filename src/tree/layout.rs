@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::Gender;
 
-use super::{Node, NODE_RADIUS};
+use super::{NODE_RADIUS, Node};
 
 const NODE_PADDING: f32 = NODE_RADIUS as f32 * 1.2;
 
@@ -99,11 +99,7 @@ impl LayoutTree {
     }
 
     pub fn root(&self) -> Option<usize> {
-        if self.0.is_empty() {
-            None
-        } else {
-            Some(0)
-        }
+        if self.0.is_empty() { None } else { Some(0) }
     }
 
     fn post_order(&self, node: usize) -> Vec<usize> {
@@ -245,7 +241,8 @@ impl LayoutTree {
             let mut shift = 0.0;
 
             log::debug!(
-                "{right}::{}:: left contour: {right_node_contour:#?}, right contour: {left_node_contour:#?}", self[right].depth
+                "{right}::{}:: left contour: {right_node_contour:#?}, right contour: {left_node_contour:#?}",
+                self[right].depth
             );
 
             for depth in self[right].depth..=max_depth(&right_node_contour, &left_node_contour) {
