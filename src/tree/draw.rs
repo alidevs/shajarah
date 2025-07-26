@@ -29,22 +29,23 @@ impl TreeUi {
     pub fn draw(&mut self, ui: &mut egui::Ui) {
         ui.style_mut().zoom(self.scale);
 
-        let bg_rect = ui.allocate_rect(ui.max_rect(), Sense::click_and_drag());
-        let viewport = bg_rect.rect;
+        let bg_resp = ui.allocate_rect(ui.max_rect(), Sense::click_and_drag());
+        let viewport = bg_resp.rect;
         ui.set_clip_rect(viewport);
 
-        if bg_rect.dragged_by(PointerButton::Primary) {
-            self.pan(bg_rect.drag_delta());
+        if bg_resp.dragged() {
+            self.pan(bg_resp.drag_delta());
 
             #[cfg(feature = "debug-ui")]
             log::debug!("new offset: {:?}", self.offset);
         }
 
-        let background_clicked = bg_rect.clicked_by(PointerButton::Primary);
+        let background_clicked = bg_resp.clicked_by(PointerButton::Primary);
 
         if let Some(hover_pos) = ui.ctx().input(|i| i.pointer.hover_pos()) {
-            if bg_rect.hovered() {
+            if bg_resp.hovered() {
                 let zoom_delta = ui.ctx().input(|i| i.zoom_delta());
+                let pan_delta = ui.ctx().input(|i| i.smooth_scroll_delta);
 
                 // there is change
                 if zoom_delta != 1. {
@@ -60,6 +61,8 @@ impl TreeUi {
                     #[cfg(feature = "debug-ui")]
                     log::debug!("new offset: {:?}", self.offset);
                 }
+
+                self.pan(pan_delta);
             }
         }
 
