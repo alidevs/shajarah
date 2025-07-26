@@ -12,9 +12,6 @@ use unicode_bidi::BidiInfo;
 use crate::zoom::Zoom;
 
 #[cfg(feature = "debug-ui")]
-use egui::Stroke;
-
-#[cfg(feature = "debug-ui")]
 use egui::StrokeKind;
 
 use super::{layout::LayoutTree, Node, SimpleNode, TreeUi, DEFAULT_IMAGE, NODE_RADIUS};
@@ -73,9 +70,6 @@ impl TreeUi {
                     let center = viewport.center().to_vec2();
                     // log::debug!("{center}");
 
-                    #[cfg(feature = "debug-ui")]
-                    log::debug!("root_coords: {root_coords:?}");
-
                     self.offset = Vec2::new(-root_coords.x + center.x, center.y);
 
                     #[cfg(feature = "debug-ui")]
@@ -108,13 +102,16 @@ impl Node {
         background_clicked: bool,
     ) {
         let stroke = ui.visuals().widgets.noninteractive.fg_stroke;
-        let layout_node = layout_tree
-            .get(self.id)
-            .expect("probably didn't update the layout tree");
-        let coords = Pos2::new(
-            offset.x + layout_node.x * scale,
-            offset.y + layout_node.y * scale,
-        );
+        let coords = {
+            let layout_node = layout_tree
+                .get(self.id)
+                .expect("probably didn't update the layout tree");
+
+            Pos2::new(
+                offset.x + layout_node.x * scale,
+                offset.y + layout_node.y * scale,
+            )
+        };
 
         let image_rect = Rect::from_center_size(
             coords,
@@ -174,11 +171,6 @@ impl Node {
         let text_size = galley.size();
 
         painter.galley(text_coords, galley, Color32::WHITE);
-
-        #[cfg(feature = "debug-ui")]
-        {
-            log::debug!("coords: {coords:?}");
-        }
 
         if !self.collapsed {
             for child in self.children.iter() {
@@ -265,7 +257,15 @@ impl Node {
                         .ui(ui);
 
                     #[cfg(feature = "debug-ui")]
-                    ui.label(format!("{{ x: {}, y: {} }}", layout_node.x, layout_node.y));
+                    {
+                        let layout_node = layout_tree
+                            .get(self.id)
+                            .expect("probably didn't update the layout tree");
+
+                        ui.label(format!("{{ x: {}, y: {} }}", layout_node.x, layout_node.y));
+
+                        ui.label(layout_node.depth.to_string());
+                    }
 
                     ui.label(self.id.to_string());
 

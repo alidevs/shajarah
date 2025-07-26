@@ -227,31 +227,6 @@ impl LayoutTree {
         }
     }
 
-    fn center_nodes_between(&mut self, left: usize, right: usize) {
-        let num_gaps = self[right].order - self[left].order;
-
-        let space_per_gap = ((self[right].x - NODE_RADIUS as f32)
-            - (self[left].x + NODE_RADIUS as f32))
-            / (num_gaps as f32);
-
-        for (i, sibling) in self.siblings_between(left, right).into_iter().enumerate() {
-            let i = i + 1;
-
-            let old_x = self[sibling].x;
-            // HINT: We traverse the tree in post-order so we should never be moving anything to the
-            //       left.
-            // TODO: Have some kind of `move_node` method that checks things like this?
-            let new_x = f32::max(
-                old_x,
-                (self[left].x + NODE_RADIUS as f32) + space_per_gap * (i as f32),
-            );
-            let diff = new_x - old_x;
-
-            self[sibling].x = new_x;
-            self[sibling].mod_ += diff;
-        }
-    }
-
     fn fix_overlaps(&mut self, right: usize) {
         fn max_depth(l: &HashMap<usize, f32>, r: &HashMap<usize, f32>) -> usize {
             if let Some(l) = l.keys().max() {
@@ -270,7 +245,7 @@ impl LayoutTree {
             let mut shift = 0.0;
 
             log::debug!(
-                "left contour: {right_node_contour:#?}, right contour: {left_node_contour:#?}"
+                "{right}::{}:: left contour: {right_node_contour:#?}, right contour: {left_node_contour:#?}", self[right].depth
             );
 
             for depth in self[right].depth..=max_depth(&right_node_contour, &left_node_contour) {
@@ -284,8 +259,6 @@ impl LayoutTree {
 
             self[right].x += shift;
             self[right].mod_ += shift;
-
-            self.center_nodes_between(left, right);
         }
     }
 
@@ -357,9 +330,10 @@ impl LayoutTree {
     }
 
     pub fn layout(&mut self) {
+        log::debug!("laying out the tree");
+
         if let Some(root) = self.root() {
             self.reset_positions();
-            // log::debug!("laying out the tree");
 
             self.initialize_y(root);
             self.initialize_x(root);
@@ -393,11 +367,15 @@ impl std::ops::IndexMut<usize> for LayoutTree {
 }
 
 fn left_contour(tree: &LayoutTree, node: usize) -> HashMap<usize, f32> {
-    contour(tree, node, f32::min, |n| n.x)
+    contour(tree, node, f32::min, |n| {
+        n.x - NODE_RADIUS as f32 * 2. + NODE_PADDING as f32
+    })
 }
 
 fn right_contour(tree: &LayoutTree, node: usize) -> HashMap<usize, f32> {
-    contour(tree, node, f32::max, |n| n.x)
+    contour(tree, node, f32::max, |n| {
+        n.x + NODE_RADIUS as f32 * 2. + NODE_PADDING as f32
+    })
 }
 
 fn contour<C, E>(tree: &LayoutTree, node: usize, cmp: C, edge: E) -> HashMap<usize, f32>
@@ -459,7 +437,7 @@ pub struct LayoutNode {
 
 impl LayoutNode {
     pub fn is_leaf(&self) -> bool {
-        self.children.is_empty() | self.collapsed
+        self.children.is_empty() || self.collapsed
     }
 
     pub fn is_root(&self) -> bool {
