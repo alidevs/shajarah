@@ -6,17 +6,25 @@ use axum::{
     Json,
 };
 use chrono::{NaiveDate, NaiveTime, Utc};
+use garde::Validate;
 use indexmap::IndexMap;
 use serde::Deserialize;
 use serde_with::{serde_as, DisplayFromStr};
 use uuid::Uuid;
 
-use crate::{api::users::models::UserRole, auth::AuthExtractor, Gender, InnerAppState};
+use crate::{
+    api::{
+        members::models::{InviteStatus, MemberInviteResponse},
+        users::models::UserRole,
+    },
+    auth::AuthExtractor,
+    Gender, InnerAppState,
+};
 
 use super::{
     models::{
-        CreateMemberBuilder, MemberResponse, MemberResponseBrief, MemberRow, MemberRowWithParents,
-        RequestStatus, RequestedMemberResponseBrief, RequestedMemberRow,
+        CreateMemberBuilder, CreateMemberInvite, MemberResponse, MemberResponseBrief, MemberRow,
+        MemberRowWithParents, RequestStatus, RequestedMemberResponseBrief, RequestedMemberRow,
         RequestedMemberRowWithParents, UpdateMemberBuilder,
     },
     MembersError,
@@ -41,6 +49,7 @@ SELECT
     m.image,
     m.image_type,
     m.personal_info,
+    m.email,
     mother.id AS mother_id,
     mother.name AS mother_name,
     mother.gender AS "mother_gender: Gender",
@@ -129,6 +138,7 @@ pub async fn get_members_flat(
             m.image,
             m.image_type,
             m.personal_info,
+            m.email,
             mother.id as mother_id,
             mother.name AS mother_name,
             mother.gender AS mother_gender,
@@ -204,6 +214,7 @@ pub async fn get_members_flat(
             m.name,
             m.gender,
             m.birthday,
+            m.email,
             m.last_name,
             m.image,
             m.image_type,
@@ -600,7 +611,7 @@ pub async fn edit_member(
 
     if let Some(last_name) = &update_member.last_name {
         log::debug!("id: {}", update_member.id);
-        log::debug!("last_name: {}", last_name);
+        log::debug!("last_name: {last_name}");
 
         sqlx::query!(
             r#"
@@ -798,7 +809,7 @@ FROM members m
         (axum::http::header::CONTENT_TYPE, "text/csv"),
         (
             axum::http::header::CONTENT_DISPOSITION,
-            &r#"attachment; filename="exported-members.csv""#,
+            r#"attachment; filename="exported-members.csv""#,
         ),
     ];
 
@@ -1275,13 +1286,13 @@ RETURNING
     Ok(())
 }
 
-/// Dispprove a member add request
+/// Disapprove a member add request
 pub async fn disapprove_member_request(
     _auth: AuthExtractor<{ UserRole::Admin as u8 }>,
     State(state): State<Arc<InnerAppState>>,
     Path(id): Path<Uuid>,
 ) -> anyhow::Result<(), MembersError> {
-    let lmao = sqlx::query!(
+    let member_request = sqlx::query!(
         r#"
 UPDATE member_add_requests
 SET status = $1
@@ -1294,9 +1305,92 @@ WHERE id = $2 AND status = $3;
     .execute(&state.db_pool)
     .await?;
 
-    if lmao.rows_affected() < 1 {
+    if member_request.rows_affected() < 1 {
         return Err(MembersError::BadRequest);
     }
+
+    Ok(())
+}
+
+#[serde_as]
+#[derive(Clone, Deserialize)]
+pub struct InvitesParams {
+    #[serde_as(as = "Option<DisplayFromStr>")]
+    pub page: Option<usize>,
+    #[serde_as(as = "Option<DisplayFromStr>")]
+    pub per_page: Option<usize>,
+}
+
+pub async fn get_member_invites(
+    _auth: AuthExtractor<{ UserRole::Admin as u8 }>,
+    State(state): State<Arc<InnerAppState>>,
+    Query(params): Query<InvitesParams>,
+) -> anyhow::Result<Json<Vec<MemberInviteResponse>>, MembersError> {
+    let per_page = params.per_page.unwrap_or(10);
+
+    let invites = sqlx::query_as!(
+        MemberInviteResponse,
+        r#"
+            SELECT id, member_id, created_at, expires_at, email, status as "status: InviteStatus" FROM member_invites
+            LIMIT $1
+            OFFSET $2;
+        "#,
+        per_page as i64,
+        (params.page.unwrap_or_default() * per_page).saturating_sub(1) as i64,
+    )
+    .fetch_all(&state.db_pool)
+    .await?;
+
+    Ok(Json(invites))
+}
+
+pub async fn invite_member(
+    _auth: AuthExtractor<{ UserRole::Admin as u8 }>,
+    State(state): State<Arc<InnerAppState>>,
+    Path(member_id): Path<i64>,
+    Json(member_invite): Json<CreateMemberInvite>,
+) -> anyhow::Result<(), MembersError> {
+    member_invite.validate()?;
+
+    let now = Utc::now();
+    let id = Uuid::new_v4();
+
+    if sqlx::query!(
+        r#"
+            SELECT id FROM users WHERE email = $1
+        "#,
+        member_invite.email,
+    )
+    .fetch_optional(&state.db_pool)
+    .await?
+    .is_some()
+    {
+        return Err(MembersError::BadRequest);
+    }
+
+    sqlx::query!(
+        r#"
+INSERT INTO member_invites (id, member_id, email, status, created_at, expires_at)
+VALUES ($1, $2, $3, $4, $5, $6);
+"#,
+        id,
+        member_id,
+        member_invite.email,
+        InviteStatus::Pending as _,
+        now,
+        now.checked_add_days(chrono::Days::new(1)),
+    )
+    .execute(&state.db_pool)
+    .await?;
+
+    state
+        .email_sender
+        .send(crate::EmailMessage {
+            to: member_invite.email.trim().to_string(),
+            content: format!("{}invite/{}", state.base_url, id),
+        })
+        .await
+        .map_err(|_e| MembersError::SomethingWentWrong)?;
 
     Ok(())
 }
