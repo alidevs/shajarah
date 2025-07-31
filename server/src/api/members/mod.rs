@@ -36,6 +36,9 @@ pub enum MembersError {
 
     #[error(transparent)]
     Anyhow(#[from] anyhow::Error),
+
+    #[error(transparent)]
+    Garde(#[from] garde::Report),
 }
 
 impl IntoResponse for MembersError {
@@ -95,6 +98,7 @@ impl IntoResponse for MembersError {
                 },
             )
                 .into_response(),
+            MembersError::Garde(_) => (StatusCode::BAD_REQUEST).into_response(),
         }
     }
 }

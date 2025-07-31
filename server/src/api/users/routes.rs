@@ -1,6 +1,7 @@
 use argon2::{password_hash::SaltString, PasswordHash, PasswordHasher, PasswordVerifier};
 use chrono::Duration;
 use chrono::Utc;
+use garde::Validate;
 use sqlx::prelude::FromRow;
 use std::sync::Arc;
 use tower_cookies::cookie::time::OffsetDateTime;
@@ -27,9 +28,7 @@ pub async fn login(
     cookies: Cookies,
     Json(payload): Json<UserLogin>,
 ) -> Result<(), UsersError> {
-    // TODO: add Result<Json<UserLogin>> and handle error
-
-    // payload.validate(&())?;
+    payload.validate()?;
 
     if let Some(session_id) = cookies
         .private(&state.cookies_secret)
@@ -164,8 +163,8 @@ pub async fn create_user(
     State(state): State<Arc<InnerAppState>>,
     Json(payload): Json<CreateUser>,
 ) -> Result<Json<UserResponse>, UsersError> {
-    // TODO: garde
-    // payload.validate(&())?;
+    payload.validate()?;
+
     if sqlx::query(
         r#"
 SELECT id, role FROM users

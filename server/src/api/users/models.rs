@@ -1,4 +1,5 @@
 use chrono::DateTime;
+use garde::Validate;
 use serde::{Deserialize, Serialize};
 use sqlx::prelude::FromRow;
 use uuid::Uuid;
@@ -20,12 +21,18 @@ pub struct ProfileImage {
     pub updated_at: Option<DateTime<chrono::Utc>>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Validate)]
 pub struct CreateUser {
+    #[garde(skip)]
     pub username: String,
+    #[garde(skip)]
     pub first_name: String,
+    #[garde(skip)]
     pub last_name: String,
+    #[garde(email)]
     pub email: String,
+    // TODO: add password rules
+    #[garde(skip)]
     pub password: String,
 }
 
@@ -34,9 +41,12 @@ pub struct CreateUserReponse {
     pub user_id: Uuid,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Validate)]
 pub struct UserLogin {
+    #[garde(email)]
     pub email: String,
+    // TODO: add password rules
+    #[garde(skip)]
     pub password: String,
 }
 

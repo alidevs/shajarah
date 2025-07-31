@@ -1,5 +1,6 @@
 use anyhow::anyhow;
 use chrono::{DateTime, Utc};
+use garde::Validate;
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -402,4 +403,10 @@ pub enum RequestStatus {
     Pending,
     Approved,
     Disapproved,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, Validate)]
+pub struct MemberInvite {
+    #[garde(email)]
+    pub email: String,
 }

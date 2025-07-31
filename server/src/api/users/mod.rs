@@ -31,10 +31,11 @@ pub enum UsersError {
     #[error(transparent)]
     Argon2(#[from] argon2::password_hash::Error),
 
-    // #[error("validation error: {0}")]
-    // Validator(#[from] garde::Errors),
     #[error("{0}")]
     Conflict(String),
+
+    #[error(transparent)]
+    Garde(#[from] garde::Report),
 }
 
 impl IntoResponse for UsersError {
@@ -82,53 +83,6 @@ impl IntoResponse for UsersError {
                 },
             )
                 .into_response(),
-            // UsersError::Diesel(diesel_error) => {
-            //     if let DatabaseError(DatabaseErrorKind::UniqueViolation, message) = &diesel_error {
-            //         let constraint_name = message
-            //             .constraint_name()
-            //             .expect("postgresql always provides the constraint name");
-            //         return match constraint_name {
-            //             "users_email_key" => (
-            //                 StatusCode::CONFLICT,
-            //                 ErrorResponse {
-            //                     error: String::from("user with the same email already exists"),
-            //                     ..Default::default()
-            //                 },
-            //             )
-            //                 .into_response(),
-            //             "users_username_key" => (
-            //                 StatusCode::CONFLICT,
-            //                 ErrorResponse {
-            //                     error: String::from("user with the same username already exists"),
-            //                     ..Default::default()
-            //                 },
-            //             )
-            //                 .into_response(),
-            //             "users_phone_number_key" => (
-            //                 StatusCode::CONFLICT,
-            //                 ErrorResponse {
-            //                     error: String::from(
-            //                         "user with the same phone number already exists",
-            //                     ),
-            //                     ..Default::default()
-            //                 },
-            //             )
-            //                 .into_response(),
-            //             _ => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
-            //         };
-            //     }
-            //     if let diesel::result::Error::NotFound = diesel_error {
-            //         return (
-            //             StatusCode::NOT_FOUND,
-            //             ErrorResponse {
-            //                 error: String::from("user not found"),
-            //                 ..Default::default()
-            //             },
-            //         )
-            //             .into_response();
-            //     }
-            //     (StatusCode::INTERNAL_SERVER_ERROR).into_response()
-            // }
             UsersError::InternalServerError => (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
             UsersError::Sqlx(_) => (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
             UsersError::Argon2(_) => (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
@@ -140,23 +94,7 @@ impl IntoResponse for UsersError {
                 },
             )
                 .into_response(),
-            // UsersError::Validator(errors) => {
-            //     let errors = errors
-            //         .flatten()
-            //         .iter()
-            //         .map(|(path, error)| format!("{path}: {error}"))
-            //         .collect::<Vec<String>>();
-
-            //     (
-            //         StatusCode::BAD_REQUEST,
-            //         ErrorResponse {
-            //             error: String::from("invalid input"),
-            //             details: Some(errors),
-            //         },
-            //     )
-            //         .into_response()
-            // }
-            // UsersError::PoolError(_) => (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
+            UsersError::Garde(_) => (StatusCode::BAD_REQUEST).into_response(),
         }
     }
 }
