@@ -34,16 +34,16 @@ pub async fn login(
         .private(&state.cookies_secret)
         .get(SESSION_COOKIE_NAME)
     {
-        if let Some(session) = sqlx::query(
+        if let Some(session) = sqlx::query!(
             r#"
 SELECT id from sessions
 WHERE sessions.id = $1
             "#,
+            Uuid::parse_str(session_id.value()).map_err(|e| {
+                log::error!("{e}");
+                UsersError::InternalServerError
+            })?
         )
-        .bind(Uuid::parse_str(session_id.value()).map_err(|e| {
-            log::error!("{e}");
-            UsersError::InternalServerError
-        })?)
         .fetch_optional(&state.db_pool)
         .await?
         {
@@ -60,13 +60,14 @@ WHERE sessions.id = $1
         pub password: String,
     }
 
-    let Some(user): Option<UserRow> = sqlx::query_as(
+    let Some(user) = sqlx::query_as!(
+        UserRow,
         r#"
 SELECT users.id, users.password FROM users
 WHERE users.email = $1
         "#,
+        payload.email
     )
-    .bind(payload.email)
     .fetch_optional(&state.db_pool)
     .await?
     else {
@@ -97,17 +98,18 @@ WHERE users.email = $1
         id: Uuid,
     }
 
-    let session: SessionRow = sqlx::query_as(
+    let session = sqlx::query_as!(
+        SessionRow,
         r#"
 INSERT INTO sessions (id, user_id, created_at, expires_at)
 VALUES ($1, $2, $3, $4)
 RETURNING sessions.id
         "#,
+        new_session.id,
+        new_session.user_id,
+        new_session.created_at,
+        new_session.expires_at,
     )
-    .bind(new_session.id)
-    .bind(new_session.user_id)
-    .bind(new_session.created_at)
-    .bind(new_session.expires_at)
     .fetch_one(&state.db_pool)
     .await?;
 
@@ -135,17 +137,14 @@ pub async fn logout(
     State(state): State<Arc<InnerAppState>>,
     auth: AuthExtractor<{ UserRole::User as u8 }>,
 ) -> Result<(), UsersError> {
-    sqlx::query(
+    sqlx::query!(
         r#"
 DELETE FROM sessions WHERE sessions.id = $1
         "#,
+        auth.session_id,
     )
-    .bind(auth.session_id)
     .execute(&state.db_pool)
     .await?;
-    // diesel::delete(sessions::table.filter(sessions::id.eq(auth.session_id)))
-    //     .execute(&mut db)
-    //     .await?;
 
     let cookie = Cookie::build((SESSION_COOKIE_NAME, ""))
         .path("/")
@@ -165,13 +164,13 @@ pub async fn create_user(
 ) -> Result<Json<UserResponse>, UsersError> {
     payload.validate()?;
 
-    if sqlx::query(
+    if sqlx::query!(
         r#"
-SELECT id, role FROM users
+SELECT id, role as "role: UserRole" FROM users
 WHERE role = $1
         "#,
+        UserRole::Admin as _,
     )
-    .bind(UserRole::Admin)
     .fetch_optional(&state.db_pool)
     .await?
     .is_some()
@@ -191,21 +190,22 @@ WHERE role = $1
         .hash_password(payload.password.as_bytes(), &salt)?
         .to_string();
 
-    let user: UserResponse = sqlx::query_as(
+    let user = sqlx::query_as!(
+        UserResponse,
         r#"
 INSERT INTO users (id, first_name, last_name, username, email, password, role, created_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING id, username, email, role
+RETURNING id, username, email, role as "role: UserRole"
         "#,
+        Uuid::new_v4(),
+        payload.first_name,
+        payload.last_name,
+        payload.username.to_lowercase(),
+        payload.email,
+        hashed_password,
+        UserRole::Admin as _,
+        Utc::now(),
     )
-    .bind(Uuid::new_v4())
-    .bind(payload.first_name)
-    .bind(payload.last_name)
-    .bind(payload.username.to_lowercase())
-    .bind(payload.email)
-    .bind(hashed_password)
-    .bind(UserRole::Admin)
-    .bind(Utc::now())
     .fetch_one(&state.db_pool)
     .await?;
 

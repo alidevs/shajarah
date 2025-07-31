@@ -36,6 +36,7 @@
             )
             (lib.fileset.maybeMissing ./assets)
             ./server/migrations
+            ./server/.sqlx
           ];
         };
 

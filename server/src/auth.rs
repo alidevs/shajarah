@@ -85,19 +85,20 @@ impl<const USER_ROLE: u8> FromRequestParts<AppState> for AuthExtractor<USER_ROLE
 
         match role {
             UserRole::Admin => {
-                let Some(rec): Option<AuthRow> = sqlx::query_as(
+                let Some(rec) = sqlx::query_as!(
+                    AuthRow,
                     r#"
-SELECT users.id as user_id, sessions.id as session_id, users.username, users.email, users.role FROM sessions
-INNER JOIN users
-  ON sessions.user_id = users.id
-WHERE sessions.id = $1 AND sessions.expires_at > $2 AND users.role = 'admin'"#,
+                        SELECT users.id as user_id, sessions.id as session_id, users.username, users.email, users.role as "role: UserRole" FROM sessions
+                        INNER JOIN users
+                          ON sessions.user_id = users.id
+                        WHERE sessions.id = $1 AND sessions.expires_at > $2 AND users.role = 'admin'
+                    "#,
+                    session_id,
+                    Utc::now(),
                 )
-                .bind(session_id)
-                .bind(Utc::now())
                 .fetch_optional(&state.inner.db_pool)
                 .await? else {
-                sqlx::query(r#"DELETE FROM sessions WHERE id = $1"#)
-                    .bind(session_id)
+                sqlx::query!(r#"DELETE FROM sessions WHERE id = $1"#, session_id)
                     .execute(&state.inner.db_pool)
                     .await
                     .ok();
@@ -114,19 +115,20 @@ WHERE sessions.id = $1 AND sessions.expires_at > $2 AND users.role = 'admin'"#,
                 })
             }
             UserRole::User => {
-                let Some(rec): Option<AuthRow> = sqlx::query_as(
+                let Some(rec) = sqlx::query_as!(
+                    AuthRow,
                     r#"
-SELECT users.id as user_id, sessions.id as session_id, users.username, users.email, users.role FROM sessions
-INNER JOIN users
-  ON sessions.user_id = users.id
-WHERE sessions.id = $1 AND sessions.expires_at > $2"#,
+                        SELECT users.id as user_id, sessions.id as session_id, users.username, users.email, users.role as "role: UserRole" FROM sessions
+                        INNER JOIN users
+                          ON sessions.user_id = users.id
+                        WHERE sessions.id = $1 AND sessions.expires_at > $2
+                    "#,
+                    session_id,
+                    Utc::now(),
                 )
-                .bind(session_id)
-                .bind(Utc::now())
                 .fetch_optional(&state.inner.db_pool)
                 .await? else {
-                sqlx::query(r#"DELETE FROM sessions WHERE id = $1"#)
-                    .bind(session_id)
+                sqlx::query!(r#"DELETE FROM sessions WHERE id = $1"#, session_id)
                     .execute(&state.inner.db_pool)
                     .await
                     .ok();

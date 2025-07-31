@@ -1,0 +1,155 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            m.id,\n            m.name,\n            m.gender as \"gender: Gender\",\n            m.birthday,\n            m.last_name,\n            m.image,\n            m.image_type,\n            m.personal_info,\n            mother.id as mother_id,\n            mother.name AS mother_name,\n            mother.gender AS \"mother_gender: Gender\",\n            mother.birthday AS mother_birthday,\n            mother.last_name AS mother_last_name,\n            father.id as father_id,\n            father.name AS father_name,\n            father.gender AS \"father_gender: Gender\",\n            father.birthday AS father_birthday,\n            father.last_name AS father_last_name\n        FROM\n            members m\n        LEFT JOIN\n            members mother ON m.mother_id = mother.id\n        LEFT JOIN\n            members father ON m.father_id = father.id\n        ORDER BY\n            m.id, m.name ASC\n        OFFSET $1\n        LIMIT $2;\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "gender: Gender",
+        "type_info": {
+          "Custom": {
+            "name": "gender",
+            "kind": {
+              "Enum": [
+                "male",
+                "female"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "birthday",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "last_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "image",
+        "type_info": "Bytea"
+      },
+      {
+        "ordinal": 6,
+        "name": "image_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "personal_info",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 8,
+        "name": "mother_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 9,
+        "name": "mother_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "mother_gender: Gender",
+        "type_info": {
+          "Custom": {
+            "name": "gender",
+            "kind": {
+              "Enum": [
+                "male",
+                "female"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "mother_birthday",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 12,
+        "name": "mother_last_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 13,
+        "name": "father_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 14,
+        "name": "father_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 15,
+        "name": "father_gender: Gender",
+        "type_info": {
+          "Custom": {
+            "name": "gender",
+            "kind": {
+              "Enum": [
+                "male",
+                "female"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 16,
+        "name": "father_birthday",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 17,
+        "name": "father_last_name",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "f2d6a42bdedba0412d30598b1d4d8e6f897822a0eeb40a35e76cc6874e79c23d"
+}

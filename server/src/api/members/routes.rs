@@ -29,12 +29,13 @@ const FIELDS_LIMIT: i32 = 10;
 pub async fn get_members(
     State(state): State<Arc<InnerAppState>>,
 ) -> anyhow::Result<Json<Option<MemberResponse>>, MembersError> {
-    let recs: Vec<MemberRowWithParents> = sqlx::query_as(
+    let recs = sqlx::query_as!(
+        MemberRowWithParents,
         r#"
 SELECT
     m.id,
     m.name,
-    m.gender,
+    m.gender as "gender: Gender",
     m.birthday,
     m.last_name,
     m.image,
@@ -42,12 +43,12 @@ SELECT
     m.personal_info,
     mother.id AS mother_id,
     mother.name AS mother_name,
-    mother.gender AS mother_gender,
+    mother.gender AS "mother_gender: Gender",
     mother.birthday AS mother_birthday,
     mother.last_name AS mother_last_name,
     father.id AS father_id,
     father.name AS father_name,
-    father.gender AS father_gender,
+    father.gender AS "father_gender: Gender",
     father.birthday AS father_birthday,
     father.last_name AS father_last_name
 FROM
@@ -116,13 +117,14 @@ pub async fn get_members_flat(
 ) -> anyhow::Result<Json<Vec<MemberResponseBrief>>, MembersError> {
     let per_page = params.per_page.unwrap_or(10);
 
-    let recs: Vec<MemberRowWithParents> = if let Some(search_term) = params.query {
-        sqlx::query_as(
+    let recs = if let Some(search_term) = params.query {
+        sqlx::query_as!(
+            MemberRowWithParents,
             r#"
         SELECT
             m.id,
             m.name,
-            m.gender,
+            m.gender as "gender: Gender",
             m.birthday,
             m.last_name,
             m.image,
@@ -130,12 +132,12 @@ pub async fn get_members_flat(
             m.personal_info,
             mother.id as mother_id,
             mother.name AS mother_name,
-            mother.gender AS mother_gender,
+            mother.gender AS "mother_gender: Gender",
             mother.birthday AS mother_birthday,
             mother.last_name AS mother_last_name,
             father.id as father_id,
             father.name AS father_name,
-            father.gender AS father_gender,
+            father.gender AS "father_gender: Gender",
             father.birthday AS father_birthday,
             father.last_name AS father_last_name
         FROM
@@ -189,20 +191,20 @@ pub async fn get_members_flat(
         OFFSET $2
         LIMIT $3;
             "#,
+            search_term,
+            (params.page.unwrap_or(0) * per_page).saturating_sub(1) as i32,
+            per_page as i32,
         )
-        .bind(search_term)
-        .bind((params.page.unwrap_or(0) * per_page).saturating_sub(1) as i32)
-        .bind(per_page as i32)
         .fetch_all(&state.db_pool)
         .await?
     } else {
-        // Your existing non-search query
-        sqlx::query_as(
+        sqlx::query_as!(
+            MemberRowWithParents,
             r#"
         SELECT
             m.id,
             m.name,
-            m.gender,
+            m.gender as "gender: Gender",
             m.birthday,
             m.last_name,
             m.image,
@@ -210,12 +212,12 @@ pub async fn get_members_flat(
             m.personal_info,
             mother.id as mother_id,
             mother.name AS mother_name,
-            mother.gender AS mother_gender,
+            mother.gender AS "mother_gender: Gender",
             mother.birthday AS mother_birthday,
             mother.last_name AS mother_last_name,
             father.id as father_id,
             father.name AS father_name,
-            father.gender AS father_gender,
+            father.gender AS "father_gender: Gender",
             father.birthday AS father_birthday,
             father.last_name AS father_last_name
         FROM
@@ -229,9 +231,9 @@ pub async fn get_members_flat(
         OFFSET $1
         LIMIT $2;
             "#,
+            (params.page.unwrap_or(0) * per_page).saturating_sub(1) as i32,
+            per_page as i32,
         )
-        .bind((params.page.unwrap_or(0) * per_page).saturating_sub(1) as i32)
-        .bind(per_page as i32)
         .fetch_all(&state.db_pool)
         .await?
     };
@@ -415,22 +417,21 @@ pub async fn add_member(
         .ok()
     });
 
-    sqlx::query(
+    sqlx::query!(
         r#"
     INSERT INTO members (name, gender, birthday, last_name, father_id, mother_id, image, image_type, personal_info)
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-    RETURNING id
             "#,
+        create_member.name,
+        create_member.gender as _,
+        create_member.birthday,
+        create_member.last_name,
+        create_member.father_id,
+        create_member.mother_id,
+        create_member.image,
+        create_member.image_type,
+        info,
     )
-    .bind(create_member.name)
-    .bind(create_member.gender)
-    .bind(create_member.birthday)
-    .bind(create_member.last_name)
-    .bind(create_member.father_id)
-    .bind(create_member.mother_id)
-    .bind(create_member.image)
-    .bind(create_member.image_type)
-    .bind(info)
     .execute(&state.db_pool)
     .await?;
 
@@ -586,15 +587,15 @@ pub async fn edit_member(
     let mut tx = state.db_pool.begin().await?;
 
     if let Some(name) = &update_member.name {
-        sqlx::query(
+        sqlx::query!(
             r#"
     UPDATE members
     SET name = $2
     WHERE id = $1
             "#,
+            id,
+            name,
         )
-        .bind(id)
-        .bind(name)
         .execute(&mut *tx)
         .await?;
     }
@@ -603,92 +604,92 @@ pub async fn edit_member(
         log::debug!("id: {}", update_member.id);
         log::debug!("last_name: {}", last_name);
 
-        sqlx::query(
+        sqlx::query!(
             r#"
 UPDATE members
 SET last_name = $1::TEXT
-WHERE id = $2::INTEGER"#,
+WHERE id = $2"#,
+            last_name,
+            id,
         )
-        .bind(last_name)
-        .bind(id)
         .execute(&mut *tx)
         .await?;
     }
 
     if let Some(birthday) = &update_member.birthday {
-        sqlx::query(
+        sqlx::query!(
             r#"
     UPDATE members
     SET birthday = $2
     WHERE id = $1
             "#,
+            id,
+            birthday,
         )
-        .bind(id)
-        .bind(birthday)
         .execute(&mut *tx)
         .await?;
     }
 
     if let Some(gender) = &update_member.gender {
-        sqlx::query(
+        sqlx::query!(
             r#"
 UPDATE members
 SET gender = $2
 WHERE id = $1
             "#,
+            id,
+            gender as _,
         )
-        .bind(id)
-        .bind(gender)
         .execute(&mut *tx)
         .await?;
     }
 
     if let Some(mother_id) = &update_member.mother_id {
-        sqlx::query(
+        sqlx::query!(
             r#"
     UPDATE members
     SET mother_id = $2
     WHERE id = $1
             "#,
+            id,
+            mother_id
         )
-        .bind(id)
-        .bind(mother_id)
         .execute(&mut *tx)
         .await?;
     } else if remove_mother_id {
-        sqlx::query(
+        sqlx::query!(
             r#"
     UPDATE members
     SET mother_id = NULL
     WHERE id = $1
             "#,
+            id,
         )
-        .bind(id)
         .execute(&mut *tx)
         .await?;
     }
 
     if let Some(father_id) = &update_member.father_id {
-        sqlx::query(
+        sqlx::query!(
             r#"
     UPDATE members
     SET father_id = $2
     WHERE id = $1
             "#,
+            id,
+            father_id
         )
-        .bind(id)
-        .bind(father_id)
         .execute(&mut *tx)
         .await?;
     } else if remove_father_id {
-        sqlx::query(
+        sqlx::query!(
             r#"
     UPDATE members
     SET father_id = NULL
     WHERE id = $1
             "#,
+            id,
         )
-        .bind(id)
         .execute(&mut *tx)
         .await?;
     }
@@ -699,26 +700,26 @@ WHERE id = $1
         ))
         .map_err(|_e| MembersError::SomethingWentWrong)?;
 
-        sqlx::query(
+        sqlx::query!(
             r#"
     UPDATE members
     SET personal_info = $2
     WHERE id = $1
             "#,
+            id,
+            info,
         )
-        .bind(id)
-        .bind(info)
         .execute(&mut *tx)
         .await?;
     } else if remove_info {
-        sqlx::query(
+        sqlx::query!(
             r#"
     UPDATE members
     SET personal_info = NULL
     WHERE id = $1
             "#,
+            id,
         )
-        .bind(id)
         .execute(&mut *tx)
         .await?;
     }
@@ -727,15 +728,15 @@ WHERE id = $1
         .image
         .and_then(|i| update_member.image_type.map(|it| (i, it)))
     {
-        sqlx::query(
+        sqlx::query!(
             r#"
 UPDATE members
 SET image = $2, image_type = $3
 WHERE id = $1"#,
+            update_member.id,
+            image,
+            image_type,
         )
-        .bind(update_member.id)
-        .bind(image)
-        .bind(image_type)
         .execute(&mut *tx)
         .await?;
     }
@@ -751,11 +752,11 @@ pub async fn delete_member(
     State(state): State<Arc<InnerAppState>>,
     Path(id): Path<i64>,
 ) -> anyhow::Result<(), MembersError> {
-    sqlx::query(
+    sqlx::query!(
         r#"
 DELETE FROM members WHERE id = $1"#,
+        id,
     )
-    .bind(id)
     .execute(&state.db_pool)
     .await?;
 
@@ -766,12 +767,13 @@ pub async fn export_members(
     _auth: AuthExtractor<{ UserRole::Admin as u8 }>,
     State(state): State<Arc<InnerAppState>>,
 ) -> Result<impl IntoResponse, MembersError> {
-    let recs: Vec<MemberRow> = sqlx::query_as(
+    let recs = sqlx::query_as!(
+        MemberRow,
         r#"
 SELECT
 m.id,
 m.name,
-m.gender,
+m.gender as "gender: Gender",
 m.birthday,
 m.last_name,
 m.image,
@@ -869,8 +871,8 @@ pub async fn upload_members_csv(
 
                 query.build().execute(&mut *tx).await?;
 
-                sqlx::query(r#"SELECT setval('members_id_seq', (SELECT MAX(id) FROM members));"#)
-                    .execute(&mut *tx)
+                sqlx::query!(r#"SELECT setval('members_id_seq', (SELECT MAX(id) FROM members));"#)
+                    .fetch_optional(&mut *tx)
                     .await?;
 
                 tx.commit().await?;
@@ -1039,24 +1041,23 @@ pub async fn request_add_member(
         .ok()
     });
 
-    sqlx::query(
+    sqlx::query!(
         r#"
-    INSERT INTO member_add_requests (id, name, gender, birthday, last_name, father_id, mother_id, image, image_type, personal_info, submitted_at)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-    RETURNING id
-            "#,
+            INSERT INTO member_add_requests (id, name, gender, birthday, last_name, father_id, mother_id, image, image_type, personal_info, submitted_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        "#,
+        uuid::Uuid::new_v4(),
+        new_member.name,
+        new_member.gender as _,
+        new_member.birthday,
+        new_member.last_name,
+        new_member.father_id,
+        new_member.mother_id,
+        new_member.image,
+        new_member.image_type,
+        info,
+        Utc::now().naive_utc(),
     )
-    .bind(uuid::Uuid::new_v4())
-    .bind(new_member.name)
-    .bind(new_member.gender)
-    .bind(new_member.birthday)
-    .bind(new_member.last_name)
-    .bind(new_member.father_id)
-    .bind(new_member.mother_id)
-    .bind(new_member.image)
-    .bind(new_member.image_type)
-    .bind(info)
-    .bind(Utc::now())
     .execute(&state.db_pool)
     .await?;
 
@@ -1071,27 +1072,28 @@ pub async fn get_requested_members_flat(
 ) -> anyhow::Result<Json<Vec<RequestedMemberResponseBrief>>, MembersError> {
     let per_page = params.per_page.unwrap_or(10);
 
-    let recs: Vec<RequestedMemberRowWithParents> = if let Some(search_term) = params.query {
-        sqlx::query_as(
+    let recs = if let Some(search_term) = params.query {
+        sqlx::query_as!(
+            RequestedMemberRowWithParents,
             r#"
         SELECT
             m.id,
             m.name,
-            m.gender,
+            m.gender as "gender: Gender",
             m.birthday,
             m.last_name,
             m.image,
             m.image_type,
             m.personal_info,
-            m.status,
+            m.status as "status: RequestStatus",
             mother.id as mother_id,
             mother.name AS mother_name,
-            mother.gender AS mother_gender,
+            mother.gender AS "mother_gender: Gender",
             mother.birthday AS mother_birthday,
             mother.last_name AS mother_last_name,
             father.id as father_id,
             father.name AS father_name,
-            father.gender AS father_gender,
+            father.gender AS "father_gender: Gender",
             father.birthday AS father_birthday,
             father.last_name AS father_last_name
         FROM
@@ -1147,33 +1149,34 @@ pub async fn get_requested_members_flat(
         OFFSET $2
         LIMIT $3;
             "#,
+            search_term,
+            (params.page.unwrap_or(0) * per_page).saturating_sub(1) as i32,
+            per_page as i32,
         )
-        .bind(search_term)
-        .bind((params.page.unwrap_or(0) * per_page).saturating_sub(1) as i32)
-        .bind(per_page as i32)
         .fetch_all(&state.db_pool)
         .await?
     } else {
-        sqlx::query_as(
+        sqlx::query_as!(
+            RequestedMemberRowWithParents,
             r#"
         SELECT
             m.id,
             m.name,
-            m.gender,
+            m.gender as "gender: Gender",
             m.birthday,
             m.last_name,
             m.image,
             m.image_type,
             m.personal_info,
-            m.status,
+            m.status as "status: RequestStatus",
             mother.id as mother_id,
             mother.name AS mother_name,
-            mother.gender AS mother_gender,
+            mother.gender AS "mother_gender: Gender",
             mother.birthday AS mother_birthday,
             mother.last_name AS mother_last_name,
             father.id as father_id,
             father.name AS father_name,
-            father.gender AS father_gender,
+            father.gender AS "father_gender: Gender",
             father.birthday AS father_birthday,
             father.last_name AS father_last_name
         FROM
@@ -1188,9 +1191,9 @@ pub async fn get_requested_members_flat(
         OFFSET $1
         LIMIT $2;
             "#,
+            (params.page.unwrap_or(0) * per_page).saturating_sub(1) as i32,
+            per_page as i32,
         )
-        .bind((params.page.unwrap_or(0) * per_page).saturating_sub(1) as i32)
-        .bind(per_page as i32)
         .fetch_all(&state.db_pool)
         .await?
     };
@@ -1234,36 +1237,40 @@ pub async fn approve_member_request(
 ) -> anyhow::Result<(), MembersError> {
     let mut tx = state.db_pool.begin().await?;
 
-    let member: RequestedMemberRow = sqlx::query_as(
+    let member = sqlx::query_as!(
+        RequestedMemberRow,
         r#"
 UPDATE member_add_requests
 SET status = $1
 WHERE id = $2 AND status = $3
-RETURNING *;
+RETURNING
+    id, name, gender as "gender: Gender",
+    birthday, father_id, image, last_name,
+    image_type, mother_id, personal_info,
+    status as "status: RequestStatus";
 "#,
+        RequestStatus::Approved as _,
+        id,
+        RequestStatus::Pending as _,
     )
-    .bind(RequestStatus::Approved)
-    .bind(id)
-    .bind(RequestStatus::Pending)
     .fetch_one(&mut *tx)
     .await?;
 
-    sqlx::query(
+    sqlx::query!(
         r#"
-    INSERT INTO members (name, gender, birthday, last_name, father_id, mother_id, image, image_type, personal_info)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-    RETURNING id
-            "#,
+            INSERT INTO members (name, gender, birthday, last_name, father_id, mother_id, image, image_type, personal_info)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        "#,
+        member.name,
+        member.gender as _,
+        member.birthday,
+        member.last_name,
+        member.father_id,
+        member.mother_id,
+        member.image,
+        member.image_type,
+        member.personal_info,
     )
-    .bind(member.name)
-    .bind(member.gender)
-    .bind(member.birthday)
-    .bind(member.last_name)
-    .bind(member.father_id)
-    .bind(member.mother_id)
-    .bind(member.image)
-    .bind(member.image_type)
-    .bind(member.personal_info)
     .execute(&mut *tx)
     .await?;
 
@@ -1278,16 +1285,16 @@ pub async fn disapprove_member_request(
     State(state): State<Arc<InnerAppState>>,
     Path(id): Path<Uuid>,
 ) -> anyhow::Result<(), MembersError> {
-    let lmao = sqlx::query(
+    let lmao = sqlx::query!(
         r#"
 UPDATE member_add_requests
 SET status = $1
 WHERE id = $2 AND status = $3;
 "#,
+        RequestStatus::Disapproved as _,
+        id,
+        RequestStatus::Pending as _,
     )
-    .bind(RequestStatus::Disapproved)
-    .bind(id)
-    .bind(RequestStatus::Pending)
     .execute(&state.db_pool)
     .await?;
 

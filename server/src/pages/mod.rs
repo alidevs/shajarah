@@ -147,13 +147,13 @@ pub struct RegisterTemplate;
 pub async fn register_page(
     state: State<Arc<InnerAppState>>,
 ) -> Result<impl IntoResponse, PagesError> {
-    if sqlx::query(
+    if sqlx::query!(
         r#"
-SELECT id, role FROM users
-WHERE role = $1
+            SELECT id, role as "role: UserRole" FROM users
+            WHERE role = $1
         "#,
+        UserRole::Admin as _,
     )
-    .bind(UserRole::Admin)
     .fetch_optional(&state.db_pool)
     .await?
     .is_some()
