@@ -4,6 +4,7 @@ use aes_gcm::KeyInit;
 use axum::{
     extract::DefaultBodyLimit,
     http::{HeaderValue, Method},
+    response::Html,
     routing::{get, post, put},
     Router,
 };
@@ -27,7 +28,7 @@ use server::{
     },
     pages::{
         add_request_page, admin_login_page, admin_page, admin_register_page, invite_reply_page,
-        members_login_page, user_page,
+        members_login_page, user_page, login_page, register_page, NotFoundTemplate,
     },
     AppState, Config, ConfigError, EmailMessage, InnerAppState,
 };
@@ -161,7 +162,7 @@ async fn main() {
         }),
     };
 
-    let mut app = Router::new()
+    let app = Router::new()
         .route("/admin", get(admin_page))
         .route("/admin/login", get(admin_login_page))
         .route("/admin/register", get(admin_register_page))
@@ -191,11 +192,36 @@ async fn main() {
         .route("/api/users/me", get(me))
         .route("/api/users", post(create_user));
 
-    if let Ok(dist) = std::env::var("SHAJARAH_DIST") {
-        app = app.nest_service("/", ServeDir::new(dist));
+    // Always add our custom 404 fallback first
+    let app = app.fallback(|| async { NotFoundTemplate });
+
+    // Then add static file serving if configured
+    let app = if let Ok(dist) = std::env::var("SHAJARAH_DIST") {
+        let dist_clone = dist.clone();
+        app.nest_service("/assets", ServeDir::new(format!("{}/assets", dist)))
+           .route("/", get(move || {
+               let dist = dist_clone.clone();
+               async move {
+                   std::fs::read_to_string(format!("{}/index.html", dist))
+                       .map(Html)
+                       .unwrap_or_else(|_| Html("File not found".to_string()))
+               }
+           }))
     } else if let Some(dist) = option_env!("SHAJARAH_DIST") {
-        app = app.nest_service("/", ServeDir::new(dist));
-    }
+        let dist = dist.to_string();
+        let dist_clone = dist.clone();
+        app.nest_service("/assets", ServeDir::new(format!("{}/assets", dist)))
+           .route("/", get(move || {
+               let dist = dist_clone.clone();
+               async move {
+                   std::fs::read_to_string(format!("{}/index.html", dist))
+                       .map(Html)
+                       .unwrap_or_else(|_| Html("File not found".to_string()))
+               }
+           }))
+    } else {
+        app
+    };
 
     let app = app
         .layer(

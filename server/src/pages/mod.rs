@@ -67,11 +67,29 @@ impl IntoResponse for PagesError {
 
 #[derive(Template)]
 #[template(path = "404.html")]
+struct NotFoundTemplateInner;
+
 pub struct NotFoundTemplate;
+
+impl axum::response::IntoResponse for NotFoundTemplate {
+    fn into_response(self) -> axum::response::Response {
+        let html = NotFoundTemplateInner.render().unwrap_or_else(|_| "404 Not Found".to_string());
+        (axum::http::StatusCode::NOT_FOUND, axum::response::Html(html)).into_response()
+    }
+}
 
 #[derive(Template)]
 #[template(path = "500.html")]
+struct SomethingWentWrongTemplateInner;
+
 pub struct SomethingWentWrongTemplate;
+
+impl axum::response::IntoResponse for SomethingWentWrongTemplate {
+    fn into_response(self) -> axum::response::Response {
+        let html = SomethingWentWrongTemplateInner.render().unwrap_or_else(|_| "500 Internal Server Error".to_string());
+        (axum::http::StatusCode::INTERNAL_SERVER_ERROR, axum::response::Html(html)).into_response()
+    }
+}
 
 #[derive(Template)]
 #[template(path = "admin.html")]
