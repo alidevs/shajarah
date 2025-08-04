@@ -1070,28 +1070,27 @@ pub async fn get_requested_members_flat(
 ) -> anyhow::Result<Json<Vec<RequestedMemberResponseBrief>>, MembersError> {
     let per_page = params.per_page.unwrap_or(10);
 
-    let recs = if let Some(search_term) = params.query {
-        sqlx::query_as!(
-            RequestedMemberRowWithParents,
+    let recs: Vec<RequestedMemberRowWithParents> = if let Some(search_term) = params.query {
+        sqlx::query_as(
             r#"
         SELECT
             m.id,
             m.name,
-            m.gender as "gender: Gender",
+            m.gender,
             m.birthday,
             m.last_name,
             m.image,
             m.image_type,
             m.personal_info,
-            m.status as "status: RequestStatus",
+            m.status,
             mother.id as mother_id,
             mother.name AS mother_name,
-            mother.gender AS "mother_gender: Gender",
+            mother.gender AS mother_gender,
             mother.birthday AS mother_birthday,
             mother.last_name AS mother_last_name,
             father.id as father_id,
             father.name AS father_name,
-            father.gender AS "father_gender: Gender",
+            father.gender AS father_gender,
             father.birthday AS father_birthday,
             father.last_name AS father_last_name
         FROM
@@ -1147,34 +1146,33 @@ pub async fn get_requested_members_flat(
         OFFSET $2
         LIMIT $3;
             "#,
-            search_term,
-            (params.page.unwrap_or(0) * per_page).saturating_sub(1) as i32,
-            per_page as i32,
         )
+        .bind(search_term)
+        .bind((params.page.unwrap_or(0) * per_page).saturating_sub(1) as i32)
+        .bind(per_page as i32)
         .fetch_all(&state.db_pool)
         .await?
     } else {
-        sqlx::query_as!(
-            RequestedMemberRowWithParents,
+        sqlx::query_as(
             r#"
         SELECT
             m.id,
             m.name,
-            m.gender as "gender: Gender",
+            m.gender,
             m.birthday,
             m.last_name,
             m.image,
             m.image_type,
             m.personal_info,
-            m.status as "status: RequestStatus",
+            m.status,
             mother.id as mother_id,
             mother.name AS mother_name,
-            mother.gender AS "mother_gender: Gender",
+            mother.gender AS mother_gender,
             mother.birthday AS mother_birthday,
             mother.last_name AS mother_last_name,
             father.id as father_id,
             father.name AS father_name,
-            father.gender AS "father_gender: Gender",
+            father.gender AS father_gender,
             father.birthday AS father_birthday,
             father.last_name AS father_last_name
         FROM
@@ -1189,9 +1187,9 @@ pub async fn get_requested_members_flat(
         OFFSET $1
         LIMIT $2;
             "#,
-            (params.page.unwrap_or(0) * per_page).saturating_sub(1) as i32,
-            per_page as i32,
         )
+        .bind((params.page.unwrap_or(0) * per_page).saturating_sub(1) as i32)
+        .bind(per_page as i32)
         .fetch_all(&state.db_pool)
         .await?
     };
