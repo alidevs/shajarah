@@ -122,14 +122,39 @@
           LD_LIBRARY_PATH = "${lib.makeLibraryPath buildInputs}";
 
           shellHook = ''
-            docker start shajarah-dev || \
-              docker run \
-              --name shajarah-dev \
-              -p 5445:5432 \
-              -e POSTGRES_PASSWORD=shajarah-dev \
-              -d postgres
+            cleanup() {
+              echo "Stopping development containers..."
+              docker stop shajarah-dev-db shajarah-dev-pgweb shajarah-dev-mailhog &>/dev/null &
+            }
 
-            grep DATABASE_URL .env || echo "DATABASE_URL=postgres://postgres:shajarah-dev@localhost:5445/postgres" >> .env
+            # Register cleanup on exit
+            trap cleanup EXIT
+
+            run-services() {
+              docker start shajarah-dev-db &> /dev/null || \
+                docker run --rm \
+                --name shajarah-dev-db \
+              docker start shajarah-dev-db &> /dev/null || \
+                docker run \
+                --name shajarah-dev-db \
+                -p 5445:5432 \
+                -e POSTGRES_PASSWORD=shajarah-dev \
+                -d postgres  &> /dev/null || true
+
+               docker start shajarah-dev-pgweb &> /dev/null || \
+                 docker run --rm \
+                 --name shajarah-dev-pgweb \
+                 -p 8081:8081 \
+                 -d sosedoff/pgweb  &> /dev/null || true
+
+               docker start shajarah-dev-mailhog &> /dev/null || \
+                 docker run --rm \
+                 --name shajarah-dev-mailhog \
+                 -p 1025:1025 -p 8025:8025 \
+                 -d mailhog/mailhog:v1.0.1  &> /dev/null || true
+            }
+
+             export DATABASE_URL=postgres://postgres:shajarah-dev-db@localhost:5445/postgres
 
             export $(cat .env)
           '';
