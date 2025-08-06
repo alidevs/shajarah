@@ -2,7 +2,7 @@
 A web app for managing and displaying your family tree
 
 # Building from source
-When building from source, you need to build the backend, and the egui app seperately:
+When building from source, you need to build the backend, and the egui app separately:
 
 to build the egui app:
 ```bash
