@@ -3,8 +3,8 @@ use std::sync::Arc;
 use aes_gcm::KeyInit;
 use axum::{
     extract::DefaultBodyLimit,
+    handler::HandlerWithoutStateExt,
     http::{HeaderValue, Method},
-    response::Html,
     routing::{get, post, put},
     Router,
 };
@@ -47,6 +47,10 @@ struct Cli {
     /// Address to start server on
     #[arg(short, long)]
     address: Option<SocketAddrV4>,
+}
+
+async fn not_found_handler() -> impl axum::response::IntoResponse {
+    NotFoundTemplate
 }
 
 #[tokio::main]
@@ -162,7 +166,7 @@ async fn main() {
         }),
     };
 
-    let app = Router::new()
+    let mut app = Router::new()
         .route("/admin", get(admin_page))
         .route("/admin/login", get(admin_login_page))
         .route("/admin/register", get(admin_register_page))
@@ -192,36 +196,17 @@ async fn main() {
         .route("/api/users/me", get(me))
         .route("/api/users", post(create_user));
 
-    // Always add our custom 404 fallback first
-    let app = app.fallback(|| async { NotFoundTemplate });
-
-    // Then add static file serving if configured
-    let app = if let Ok(dist) = std::env::var("SHAJARAH_DIST") {
-        let dist_clone = dist.clone();
-        app.nest_service("/assets", ServeDir::new(format!("{}/assets", dist)))
-           .route("/", get(move || {
-               let dist = dist_clone.clone();
-               async move {
-                   std::fs::read_to_string(format!("{}/index.html", dist))
-                       .map(Html)
-                       .unwrap_or_else(|_| Html("File not found".to_string()))
-               }
-           }))
+    if let Ok(dist) = std::env::var("SHAJARAH_DIST") {
+        app = app.nest_service(
+            "/",
+            ServeDir::new(dist).not_found_service(not_found_handler.into_service()),
+        );
     } else if let Some(dist) = option_env!("SHAJARAH_DIST") {
-        let dist = dist.to_string();
-        let dist_clone = dist.clone();
-        app.nest_service("/assets", ServeDir::new(format!("{}/assets", dist)))
-           .route("/", get(move || {
-               let dist = dist_clone.clone();
-               async move {
-                   std::fs::read_to_string(format!("{}/index.html", dist))
-                       .map(Html)
-                       .unwrap_or_else(|_| Html("File not found".to_string()))
-               }
-           }))
-    } else {
-        app
-    };
+        app = app.nest_service(
+            "/",
+            ServeDir::new(dist).not_found_service(not_found_handler.into_service()),
+        );
+    }
 
     let app = app
         .layer(
@@ -239,6 +224,7 @@ async fn main() {
         .layer(DefaultBodyLimit::disable())
         .layer(RequestBodyLimitLayer::new(25 * 1024 * 1024 /* 25mb */))
         .with_state(app_state);
+
     let address = cli
         .address
         .unwrap_or(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 3030));
