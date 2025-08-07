@@ -104,6 +104,16 @@ pub struct AdminTemplate {
     requests_query: Option<String>,
 }
 
+impl AdminTemplate {
+    pub fn members_json(&self) -> String {
+        serde_json::to_string(&self.members).unwrap_or_else(|_| "[]".to_string())
+    }
+
+    pub fn add_requests_json(&self) -> String {
+        serde_json::to_string(&self.add_requests).unwrap_or_else(|_| "[]".to_string())
+    }
+}
+
 serde_with::with_prefix!(prefix_members "members_");
 serde_with::with_prefix!(prefix_requests "requests_");
 serde_with::with_prefix!(prefix_invites "invites_");
