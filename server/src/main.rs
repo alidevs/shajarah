@@ -28,7 +28,7 @@ use server::{
     },
     pages::{
         add_request_page, admin_login_page, admin_page, admin_register_page, invite_reply_page,
-        members_login_page, user_page, login_page, register_page, NotFoundTemplate,
+        members_login_page, user_page, NotFoundTemplate,
     },
     AppState, Config, ConfigError, EmailMessage, InnerAppState,
 };

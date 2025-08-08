@@ -14,7 +14,7 @@ use uuid::Uuid;
 
 use crate::{
     api::{
-        members::models::{InviteStatus, MemberInviteResponse},
+        members::models::MemberInviteResponse,
         users::models::UserRole,
     },
     auth::AuthExtractor,
@@ -23,7 +23,7 @@ use crate::{
 
 use super::{
     models::{
-        CreateMemberBuilder, CreateMemberInvite, MemberResponse, MemberResponseBrief, MemberRow,
+        CreateMemberBuilder, CreateMemberInvite, InviteStatus, MemberResponse, MemberResponseBrief, MemberRow,
         MemberRowWithParents, RequestStatus, RequestedMemberResponseBrief, RequestedMemberRow,
         RequestedMemberRowWithParents, UpdateMemberBuilder,
     },
@@ -124,7 +124,7 @@ pub async fn get_members_flat(
     State(state): State<Arc<InnerAppState>>,
     Query(params): Query<FlatMembersParams>,
 ) -> anyhow::Result<Json<Vec<MemberResponseBrief>>, MembersError> {
-    let per_page = params.per_page.unwrap_or(10);
+    let per_page = params.per_page.unwrap_or(12);
 
     let recs: Vec<MemberRowWithParents> = if let Some(search_term) = params.query {
         sqlx::query_as(
@@ -202,7 +202,7 @@ pub async fn get_members_flat(
             "#,
         )
         .bind(search_term)
-        .bind((params.page.unwrap_or(0) * per_page).saturating_sub(1) as i32)
+        .bind((params.page.unwrap_or(0) * per_page) as i32)
         .bind(per_page as i32)
         .fetch_all(&state.db_pool)
         .await?
@@ -241,7 +241,7 @@ pub async fn get_members_flat(
         LIMIT $2;
             "#,
         )
-        .bind((params.page.unwrap_or(0) * per_page).saturating_sub(1) as i32)
+        .bind((params.page.unwrap_or(0) * per_page) as i32)
         .bind(per_page as i32)
         .fetch_all(&state.db_pool)
         .await?
@@ -1079,7 +1079,7 @@ pub async fn get_requested_members_flat(
     State(state): State<Arc<InnerAppState>>,
     Query(params): Query<FlatMembersParams>,
 ) -> anyhow::Result<Json<Vec<RequestedMemberResponseBrief>>, MembersError> {
-    let per_page = params.per_page.unwrap_or(10);
+    let per_page = params.per_page.unwrap_or(12);
 
     let recs: Vec<RequestedMemberRowWithParents> = if let Some(search_term) = params.query {
         sqlx::query_as(
