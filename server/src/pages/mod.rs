@@ -1,7 +1,7 @@
 use crate::api::{
     members::{
         models::MemberInviteResponse,
-        routes::{get_member_invites, InvitesParams},
+        routes::{get_member_invites, members_count, InvitesParams},
     },
     users::models::UserResponseBrief,
 };
@@ -43,7 +43,7 @@ mod filters {
         } else {
             ' '
         };
-        
+
         if last_char != ' ' {
             Ok(format!("{}{}", first_char, last_char))
         } else {
@@ -113,6 +113,7 @@ impl axum::response::IntoResponse for SomethingWentWrongTemplate {
 pub struct AdminTemplate {
     name: String,
     members: Vec<MemberResponseBrief>,
+    members_count: usize,
     add_requests: Vec<RequestedMemberResponseBrief>,
     member_invites: Vec<MemberInviteResponse>,
     members_query: Option<String>,
@@ -172,7 +173,9 @@ pub async fn admin_page(
             let name = auth.current_user.first_name.clone();
 
             let Json(member_invites) =
-                get_member_invites(auth, state, Query(params.invite_params)).await?;
+                get_member_invites(auth, state.clone(), Query(params.invite_params)).await?;
+
+            let members_count = members_count(state).await? as usize;
 
             Ok(AdminTemplate {
                 name,
@@ -185,12 +188,11 @@ pub async fn admin_page(
                 members_per_page,
                 requests_page,
                 requests_per_page,
+                members_count,
             })
         }
         Err(e) => match e {
-            AuthError::InvalidSession | AuthError::SessionError(_) => {
-                Err(PagesError::Auth(e))
-            }
+            AuthError::InvalidSession | AuthError::SessionError(_) => Err(PagesError::Auth(e)),
             e => Err(e.into()),
         },
     }

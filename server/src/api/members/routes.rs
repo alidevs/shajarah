@@ -13,19 +13,16 @@ use serde_with::{serde_as, DisplayFromStr};
 use uuid::Uuid;
 
 use crate::{
-    api::{
-        members::models::MemberInviteResponse,
-        users::models::UserRole,
-    },
+    api::{members::models::MemberInviteResponse, users::models::UserRole},
     auth::AuthExtractor,
     Gender, InnerAppState,
 };
 
 use super::{
     models::{
-        CreateMemberBuilder, CreateMemberInvite, InviteStatus, MemberResponse, MemberResponseBrief, MemberRow,
-        MemberRowWithParents, RequestStatus, RequestedMemberResponseBrief, RequestedMemberRow,
-        RequestedMemberRowWithParents, UpdateMemberBuilder,
+        CreateMemberBuilder, CreateMemberInvite, InviteStatus, MemberResponse, MemberResponseBrief,
+        MemberRow, MemberRowWithParents, RequestStatus, RequestedMemberResponseBrief,
+        RequestedMemberRow, RequestedMemberRowWithParents, UpdateMemberBuilder,
     },
     MembersError,
 };
@@ -271,6 +268,19 @@ pub async fn get_members_flat(
         .collect();
 
     Ok(Json(members))
+}
+
+pub async fn members_count(State(state): State<Arc<InnerAppState>>) -> Result<i64, MembersError> {
+    struct Count {
+        count: Option<i64>,
+    }
+
+    // PERF: this is fast enough for 99% of family trees sizes
+    let count = sqlx::query_as!(Count, r#"SELECT COUNT(*) as count FROM members;"#)
+        .fetch_one(&state.db_pool)
+        .await?;
+
+    Ok(count.count.unwrap_or(0))
 }
 
 /// Add a family member

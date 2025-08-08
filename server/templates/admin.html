@@ -182,7 +182,7 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
           </svg>
         </div>
-        <h3 class="text-xl font-bold text-gray-900" x-text="data?.totalMembers || {{ members.len() }}">{{ members.len() }}</h3>
+        <h3 class="text-xl font-bold text-gray-900">{{ members_count }}</h3>
         <p class="text-sm text-gray-600 arabic-text">إجمالي الأعضاء</p>
         
         <!-- Action hint -->
@@ -284,7 +284,7 @@
             <span class="arabic-text">إدارة أفراد العائلة</span>
           </h2>
           <p class="text-sm text-gray-600 mt-1 arabic-text">
-            عرض وتحرير أعضاء شجرة العائلة - المجموع: <span x-text="data?.totalMembers || {{ members.len() }}" class="font-medium text-forest-primary">0</span> عضو
+            عرض وتحرير أعضاء شجرة العائلة - المجموع: <span class="font-medium text-forest-primary">{{ members_count }}</span> عضو
           </p>
         </div>
         
@@ -599,10 +599,10 @@
         <div class="text-sm text-gray-600">
           <span>الصفحة {{ members_page + 1 }}</span>
           <span class="mx-2">•</span>
-          <span>{{ members.len() }} عضو في هذه الصفحة</span>
+          <span>{{ members_count }} عضو في هذه الصفحة</span>
         </div>
         
-        {% if members.len() >= members_per_page %}
+        {% if members_count >= members_per_page %}
         <a href="?{% if let Some(query) = members_query %}members_query={{ query }}&{% endif %}members_page={{ members_page + 1 }}&members_per_page={{ members_per_page }}{% if let Some(query) = requests_query %}&requests_query={{ query }}{% endif %}&requests_page={{ requests_page }}&requests_per_page={{ requests_per_page }}" class="btn btn-outline">
           الصفحة التالية
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1293,7 +1293,6 @@
       data: {
         currentPage: 0,
         perPage: 12,
-        totalMembers: {{ members.len() }}, // Initialize from server data
         displayedMembers: [],
         allMembers: [], // Store all members from server
         allAddRequests: [], // Store all add requests from server
@@ -1337,7 +1336,6 @@
         
         // Store all members
         this.data.allMembers = serverMembers;
-        this.data.totalMembers = serverMembers.length;
         
         // Initialize add requests from server data
         const serverAddRequestsRaw = {{ self.add_requests_json()|safe }};
@@ -1439,15 +1437,6 @@
           });
           
           this.data.displayedMembers = filteredMembers;
-          
-          // For pagination UI, we need to estimate total count
-          // If we got less than perPage results, we're on the last page
-          if (members.length < this.data.perPage) {
-            this.data.totalMembers = (this.data.currentPage * this.data.perPage) + members.length;
-          } else {
-            // Estimate there might be more pages
-            this.data.totalMembers = (this.data.currentPage + 1) * this.data.perPage + 1;
-          }
           
         } catch (error) {
           console.error('Failed to load members:', error);
